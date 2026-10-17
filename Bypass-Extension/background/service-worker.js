@@ -1,6 +1,13 @@
 'use strict';
 
-if (typeof importScripts === 'function') importScripts('../core/billing-config.js', 'billing.js', '../core/pro-model.js', 'pro-worker.js');
+if (typeof importScripts === 'function') {
+  try { importScripts('../core/billing-config.js', 'billing.js'); }
+  catch {
+    globalThis.BypassBilling = Object.freeze({enabled:true,status:async()=>({configured:true,active:false,plan:'free',status:'configuration_error',expiresAt:null,trialUsed:true}),trial:async()=>{throw Error('Billing configuration needs attention. Free protection still works.');}});
+    chrome.runtime.onMessage.addListener((message,sender,respond)=>{if(sender.id===chrome.runtime.id&&sender.url?.startsWith(chrome.runtime.getURL('ui/'))&&message?.type?.startsWith('billing-'))respond({ok:false,error:'Billing configuration needs attention. Free protection still works.'});});
+  }
+  importScripts('../core/pro-model.js', 'pro-worker.js');
+}
 
 let writes = Promise.resolve();
 const counters = new Set([

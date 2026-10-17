@@ -58,7 +58,7 @@
     if (!state.config.rules.length) { const empty = document.createElement('li'); empty.textContent = 'No personal rules yet.'; $('pro-rules').append(empty); }
     $('pro-progress').textContent = `${state.progress.hidden || 0} personal distractions hidden · ${state.progress.skipAttempts || 0} media clicks attempted · ${Math.floor((state.progress.focusSeconds || 0) / 60)} focus minutes.`;
     $('footer-plan').textContent = state.active ? state.plan==='pro'?'Plan: Pro':'Plan: Pro trial' : 'Plan: Free';
-    $('footer-version').textContent = 'V0.7.0 alpha';
+    $('footer-version').textContent = `V${chrome.runtime.getManifest?.().version || '0.7.0'}`;
     window.dispatchEvent(new Event('bypass-pro-rendered'));
   }
   async function run(task) {
