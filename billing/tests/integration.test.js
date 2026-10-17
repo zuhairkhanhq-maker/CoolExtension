@@ -98,3 +98,19 @@ integration('Session revocation and portal ownership do not trust a client-suppl
   const a=await login();await assert.rejects(()=>billing.portal(a.session),/No subscription/);
   await pool.query('DELETE FROM sessions WHERE account_id=$1',[a.session.account_id]);await assert.rejects(()=>billing.authenticate(a.token),/expired/);
 });
+integration('Customer mapping rejects cross-account reuse before portal access is possible',async()=>{
+  const a=await login(),b=await login('other@example.test');
+  await pool.query('INSERT INTO billing_customers(account_id,customer_id) VALUES($1,$2)',[a.session.account_id,id('ctm')]);
+  provider.list=async()=>[{id:id('ctm'),email:b.session.email}];
+  await assert.rejects(()=>billing.customer(b.session));
+  await assert.rejects(()=>billing.portal(b.session));
+});
+integration('Canonical approved refund revokes access, reversal recovers, unknown price fails closed',async()=>{
+  const a=await login(),now=Date.now();await pool.query('INSERT INTO billing_customers(account_id,customer_id) VALUES($1,$2)',[a.session.account_id,id('ctm')]);
+  sub={id:id('sub'),custom_data:{account_id:a.session.account_id},customer_id:id('ctm'),status:'active',updated_at:new Date(now).toISOString(),current_billing_period:{starts_at:new Date(now-10000).toISOString(),ends_at:new Date(now+1000000).toISOString()},items:[{price:{id:cfg.prices.monthly}}]};
+  const adj={id:id('adj'),transaction_id:id('txn'),action:'refund',status:'approved',type:'full',created_at:new Date(now).toISOString(),updated_at:new Date(now).toISOString()};
+  provider.get=async path=>path.startsWith('/subscriptions')?sub:path.startsWith('/adjustments')?adj:{id:id('txn'),subscription_id:id('sub'),billed_at:new Date(now).toISOString()};provider.list=async()=>[adj];
+  await processEntity(pool,cfg,provider,{entity_id:adj.id});assert.equal((await billing.entitlement(a.session)).plan,'free');
+  adj.status='reversed';adj.updated_at=new Date(now+1000).toISOString();await processEntity(pool,cfg,provider,{entity_id:adj.id});assert.equal((await billing.entitlement(a.session)).plan,'pro');
+  sub={...sub,updated_at:new Date(now+2000).toISOString(),items:[{price:{id:'pri_unlicensed'}}]};await syncSubscription(pool,cfg,provider,sub.id);assert.equal((await billing.entitlement(a.session)).plan,'free');
+});

@@ -1,5 +1,5 @@
 import pg from 'pg';
-export function database(cfg) { return new pg.Pool({connectionString:cfg.database,max:cfg.poolMax,ssl:cfg.ssl?{rejectUnauthorized:true}:false,connectionTimeoutMillis:5000,idleTimeoutMillis:30000,statement_timeout:10000,application_name:'bypass-billing'}); }
+export function database(cfg) { const url=new URL(cfg.database);for(const key of ['ssl','sslmode','sslcert','sslkey','sslrootcert'])url.searchParams.delete(key);return new pg.Pool({connectionString:url.href,max:cfg.poolMax,ssl:cfg.ssl?{rejectUnauthorized:true}:false,connectionTimeoutMillis:5000,idleTimeoutMillis:30000,statement_timeout:10000,application_name:'bypass-billing'}); }
 export async function transaction(pool, fn) {
   const client=await pool.connect();
   try {await client.query('BEGIN');const result=await fn(client);await client.query('COMMIT');return result;}

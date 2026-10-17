@@ -4,7 +4,7 @@ export function subscriptionState(sub, prices) {
   const date=value=>value&&Number.isFinite(Date.parse(value))?new Date(value):null;
   const updated=date(sub.updated_at);if(!updated)throw Error('Subscription missing updated_at');
   return {id:sub.id,account:sub.custom_data?.account_id,customer:sub.customer_id,status:sub.status,price,
-    start:date(sub.current_billing_period?.starts_at),end:date(sub.current_billing_period?.ends_at),trial:date(sub.next_billed_at),updated,scheduled:sub.scheduled_change?.action||null};
+    start:date(sub.current_billing_period?.starts_at),end:date(sub.current_billing_period?.ends_at),trial:date(sub.next_billed_at),updated:sub.updated_at,scheduled:sub.scheduled_change?.action||null};
 }
 export function accessPolicy(account, subscriptions, adjustments, now, graceHours) {
   const live=[];

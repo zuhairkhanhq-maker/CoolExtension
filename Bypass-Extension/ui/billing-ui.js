@@ -11,7 +11,7 @@
     $('billing-plan-status').textContent=state.active?`${state.plan==='trial'?'Trial':'Pro'} active${state.cancelAtEnd?' · cancels at the end of the paid period':''}. Signed offline access until ${new Date(state.expiresAt).toLocaleString()}.`:'Free protection is active. Pro unlocks only after server verification.';
     $('pro-trial').textContent='Start my 7-day account trial';
     $('pro-trial').disabled=busy||!state.signedIn||state.trialUsed;
-    $('pro-trial-note').textContent='One trial per verified account. No card or automatic charge. Account and billing details are online; browsing rules and activity stay on this device.';
+    $('pro-trial-note').textContent='One trial per verified account. The trial needs no card and never charges. Paid plans renew under the checkout terms. Account and billing details are online; browsing rules and activity stay on this device.';
     for(const button of $('billing-controls').querySelectorAll('button'))button.disabled=busy;
   }
   async function run(task){if(busy)return;busy=true;try{await task();$('billing-feedback').textContent='Account updated.';}catch(error){$('billing-feedback').textContent=error.message;}finally{busy=false;try{render(await request('billing-status'));}catch{}window.dispatchEvent(new Event('bypass-account-updated'));}}

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {generateKeyPairSync,createHmac,randomUUID} from 'node:crypto';
 import {webhookValid,signer,verifyGrant} from '../src/security.js';
 import {accessPolicy} from '../src/policy.js';
+import {Paddle} from '../src/paddle.js';
 const pair=generateKeyPairSync('ec',{namedCurve:'P-256'}),key=pair.privateKey.export({format:'jwk'}),s=signer(key,'test','https://billing.test');
 test('Raw-byte signature, rotated signatures, replay, future timestamp and tampering',()=>{
   const now=Date.now(),ts=String(Math.floor(now/1000)),raw=Buffer.from('{"hello": "world"}');const signature=createHmac('sha256','secret').update(`${ts}:`).update(raw).digest('hex');
@@ -43,4 +44,10 @@ test('Account trial is server-timed and cannot revive a canceled paid subscripti
   assert.equal(accessPolicy(account,[],[],now,72).plan,'trial');
   assert.equal(accessPolicy(account,[{...sub,status:'canceled'}],[],now,72).plan,'free');
   assert.equal(accessPolicy({trial_started_at:new Date(now-8*86400000)},[],[],now,72).plan,'free');
+});
+test('Paddle pagination stops at has_more=false and never follows a foreign host',async()=>{
+  let calls=0;const p=new Paddle({paddleBase:'https://api.paddle.com',paddleKey:'fixture'},async()=>{calls++;return new Response(JSON.stringify({data:[{id:'one'}],meta:{pagination:{next:'https://api.paddle.com/next',has_more:false}}}));});
+  assert.equal((await p.list('/customers')).length,1);assert.equal(calls,1);
+  const bad=new Paddle({paddleBase:'https://api.paddle.com',paddleKey:'fixture'},async()=>new Response(JSON.stringify({data:[],meta:{pagination:{has_more:true,next:'https://evil.test/steal'}}})));
+  await assert.rejects(()=>bad.list('/customers'),/host/);
 });

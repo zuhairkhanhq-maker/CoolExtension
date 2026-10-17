@@ -8,4 +8,8 @@ if(key.d||key.kty!=='EC'||key.crv!=='P-256'||!key.x||!key.y||!key.kid)throw Erro
 const source=new URL('../../Bypass-Extension/',import.meta.url),target=new URL('../../build/Bypass-Extension/',import.meta.url);
 await mkdir(target,{recursive:true});await cp(source,target,{recursive:true,filter:path=>!path.includes('/tests')});
 await writeFile(new URL('core/billing-config.js',target),`'use strict';\nglobalThis.BypassBillingConfig=Object.freeze(${JSON.stringify({enabled:true,apiOrigin,publicKeys:[key]})});\n`);
+const manifest=JSON.parse(await readFile(new URL('manifest.json',target),'utf8'));
+manifest.version='0.8.0';manifest.version_name='0.8.0 Billing Integration Candidate';
+for(const script of manifest.content_scripts)script.exclude_matches=[...new Set([...(script.exclude_matches||[]),apiOrigin+'/*','https://*.paddle.com/*'])];
+await writeFile(new URL('manifest.json',target),JSON.stringify(manifest,null,2)+'\n');
 console.log('Configured extension is in build/Bypass-Extension. Server secrets were not copied.');

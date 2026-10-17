@@ -11,8 +11,10 @@ export async function enqueue(pool,event) {
   await pool.query(`INSERT INTO webhook_jobs(event_id,event_type,entity_id,occurred_at) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING`,[event.event_id,event.event_type,entity,event.occurred_at]);
 }
 export async function syncSubscription(pool,cfg,paddle,id) {
-  const raw=await paddle.get(`/subscriptions/${id}`),sub=subscriptionState(raw,cfg.prices);
-  if(!sub)return;
+  const raw=await paddle.get(`/subscriptions/${id}`);
+  const previous=(await pool.query('SELECT account_id FROM subscriptions WHERE id=$1',[id])).rows[0];
+  const sub=subscriptionState({...raw,custom_data:{...raw.custom_data,account_id:raw.custom_data?.account_id||previous?.account_id}},cfg.prices);
+  if(!sub){if(Number.isFinite(Date.parse(raw.updated_at)))await pool.query(`UPDATE subscriptions SET status='paused',source_updated_at=$2,synced_at=now() WHERE id=$1 AND source_updated_at<=$2`,[id,raw.updated_at]);return;}
   if(!uuid(sub.account))throw Error('Unmapped subscription.');
   await transaction(pool,async client=>{
     const account=await client.query('SELECT id FROM accounts WHERE id=$1 FOR UPDATE',[sub.account]);if(!account.rows.length)throw Error('Unknown account.');
