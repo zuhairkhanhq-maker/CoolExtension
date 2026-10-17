@@ -32,6 +32,7 @@ test('Payment recovery grace is bounded and never becomes unlimited access',()=>
   const late={...sub,status:'past_due',past_due_since:new Date(now-3600000)};
   assert.equal(accessPolicy({},[late],[],now,72).plan,'pro');
   assert.equal(accessPolicy({},[late],[],now+72*3600000,72).plan,'free');
+  assert.equal(accessPolicy({},[{...sub,synced_at:new Date(now-25*3600000)}],[],now,72).plan,'free');
 });
 test('Only approved full current-period refunds and chargebacks revoke, reversals recover',()=>{
   const refund={subscription_id:sub.id,status:'approved',action:'refund',type:'full',billed_at:new Date(now)};

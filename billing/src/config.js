@@ -14,6 +14,6 @@ export function config(env = process.env) {
     paddleBase:mode==='live'?'https://api.paddle.com':'https://sandbox-api.paddle.com', paddleKey:required(env,'PADDLE_API_KEY'), webhookSecret:required(env,'PADDLE_WEBHOOK_SECRET'), prices,
     clientToken:required(env,'PADDLE_CLIENT_TOKEN'), paddleRpm:int(env,'PADDLE_RPM',180,1,10000), checkoutOrigin:new URL(required(env,'CHECKOUT_ORIGIN')).origin,
     extensionOrigins:ids.map(id=>`chrome-extension://${id}`), hmac:secret, keyId:required(env,'SIGNING_KEY_ID'), privateJwk:JSON.parse(required(env,'SIGNING_PRIVATE_JWK')),
-    grantSeconds:int(env,'GRANT_SECONDS',3600,300,86400), graceHours:int(env,'PAYMENT_GRACE_HOURS',72,0,168), sessionDays:int(env,'SESSION_DAYS',30,1,90),
+    grantSeconds:int(env,'GRANT_SECONDS',3600,300,86400), graceHours:int(env,'PAYMENT_GRACE_HOURS',72,0,168), maxStateAgeHours:int(env,'MAX_STATE_AGE_HOURS',24,6,168), sessionDays:int(env,'SESSION_DAYS',30,1,90),
     smtp:{host:required(env,'SMTP_HOST'),port:int(env,'SMTP_PORT',587,1,65535),secure:env.SMTP_SECURE==='true',auth:{user:required(env,'SMTP_USER'),pass:required(env,'SMTP_PASS')},requireTLS:env.SMTP_SECURE!=='true',connectionTimeout:10000,socketTimeout:15000}, mailFrom:required(env,'MAIL_FROM') };
 }

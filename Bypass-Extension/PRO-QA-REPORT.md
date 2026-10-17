@@ -1,5 +1,9 @@
 # Pro alpha QA — 2026-10-17 UTC
 
+## Billing implementation update
+
+The repository now includes the Paddle backend, durable PostgreSQL processing, account verification, signed device-bound access and a configured-extension builder. See `../billing/README.md` for setup and the mandatory provider acceptance checklist. The extension's default billing config is deliberately disabled for the existing alpha fixtures; a configured build ignores legacy local trials. Previous statements that billing is absent describe earlier builds. No live Paddle/SMTP credentials, actual-money transactions or million-user deployment load tests have been performed.
+
 ## GitHub browser QA update
 
 The earlier local browser-install blocker is resolved by the GitHub Actions runner. Run https://github.com/zuhairkhanhq-maker/CoolExtension/actions/runs/39070626686 passed all four suites: 74 free-engine fixtures, 10 free-popup checks, 12 worker/model checks, and 18 installed-extension/model checks. Fixtures run in Chromium; streaming adapters simulate platform DOM/player states. The Pro media test uses a native generated video fixture. The source now also has guards against focused forms and repeated clicks after site pause/resume; the next commit's CI run validates these final guards.

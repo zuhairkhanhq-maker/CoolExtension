@@ -6,9 +6,10 @@ export function subscriptionState(sub, prices) {
   return {id:sub.id,account:sub.custom_data?.account_id,customer:sub.customer_id,status:sub.status,price,
     start:date(sub.current_billing_period?.starts_at),end:date(sub.current_billing_period?.ends_at),trial:date(sub.next_billed_at),updated:sub.updated_at,scheduled:sub.scheduled_change?.action||null};
 }
-export function accessPolicy(account, subscriptions, adjustments, now, graceHours) {
+export function accessPolicy(account, subscriptions, adjustments, now, graceHours, maxStateAgeHours=24) {
   const live=[];
   for(const sub of subscriptions) {
+    if(sub.synced_at && now-+new Date(sub.synced_at)>maxStateAgeHours*3600000)continue;
     const blocked=adjustments.some(a=>a.subscription_id===sub.id && a.status==='approved' && (a.action==='chargeback' || (a.action==='refund'&&a.type==='full'&&a.billed_at&&sub.period_start&&new Date(a.billed_at)>=new Date(sub.period_start))));
     if(blocked)continue;
     let until=0;

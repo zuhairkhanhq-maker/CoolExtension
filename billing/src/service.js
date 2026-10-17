@@ -53,7 +53,7 @@ export class Billing {
     const {rows:[account]}=await this.pool.query('SELECT * FROM accounts WHERE id=$1',[session.account_id]);
     const {rows:subs}=await this.pool.query('SELECT * FROM subscriptions WHERE account_id=$1 ORDER BY source_updated_at DESC',[session.account_id]);
     const {rows:adjustments}=await this.pool.query('SELECT adjustments.* FROM adjustments JOIN subscriptions ON subscriptions.id=adjustments.subscription_id WHERE subscriptions.account_id=$1',[session.account_id]);
-    const now=Date.now(),policy=accessPolicy(account,subs,adjustments,now,this.cfg.graceHours);
+    const now=Date.now(),policy=accessPolicy(account,subs,adjustments,now,this.cfg.graceHours,this.cfg.maxStateAgeHours);
     const issued=Math.floor(now/1000),expires=Math.min(Math.floor(policy.until/1000),issued+this.cfg.grantSeconds);
     return {token:this.signer.issue({sub:account.id,device:session.device_id,plan:policy.plan,status:policy.status,iat:issued,exp:expires,cancelAtEnd:policy.cancelAtEnd}),email:account.email,plan:policy.plan,status:policy.status,trialUsed:!!account.trial_started_at||!!subs.length,accessUntil:policy.until,cancelAtEnd:policy.cancelAtEnd,refreshAfter:Math.min(1800,Math.max(120,Math.floor((expires-issued)/2)))};
   }

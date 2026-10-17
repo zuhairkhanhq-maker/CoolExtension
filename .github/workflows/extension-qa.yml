@@ -32,6 +32,8 @@ jobs:
           node-version: '22'
       - run: npm ci --ignore-scripts
         working-directory: billing
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: billing
       - run: npm test
         working-directory: billing
   browser-tests:
