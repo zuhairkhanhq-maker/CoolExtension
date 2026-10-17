@@ -10,9 +10,10 @@
     const config = M.normalize(data.proConfig);
     const count = value => Number.isFinite(value) && value >= 0 ? Math.min(Number.MAX_SAFE_INTEGER, value) : 0;
     const progress = Object.fromEntries(['hidden', 'skipAttempts', 'focusSeconds'].map(key => [key, count(data.proProgress?.[key])]));
-    return { config, revision: Number.isSafeInteger(data.proRevision) ? data.proRevision : 0, active: M.access(data.proLicense, now), expiresAt: data.proLicense?.startedAt ? data.proLicense.startedAt + 604800000 : null,
-      trialUsed: !!data.proLicense, mode: M.effectiveMode(config),
-      usage: data.proUsage?.day === M.dayKey() ? data.proUsage.hosts || {} : {}, progress, billingReady: false };
+    const billing = globalThis.BypassBilling?.enabled ? await BypassBilling.status() : null;
+    return { config, revision: Number.isSafeInteger(data.proRevision) ? data.proRevision : 0, active: billing ? billing.active : M.access(data.proLicense, now), expiresAt: billing ? billing.expiresAt : data.proLicense?.startedAt ? data.proLicense.startedAt + 604800000 : null,
+      trialUsed: billing ? billing.trialUsed : !!data.proLicense, mode: M.effectiveMode(config), plan: billing?.plan || (M.access(data.proLicense,now)?'trial':'free'),
+      usage: data.proUsage?.day === M.dayKey() ? data.proUsage.hosts || {} : {}, progress, billingReady: !!billing, billingStatus: billing?.status || null };
   }
   async function broadcast() {
     const state = await snapshot();
@@ -43,6 +44,9 @@
       let state = await snapshot();
       if (msg.type === 'pro-get') return state;
       if (msg.type === 'pro-trial') {
+        if (globalThis.BypassBilling?.enabled) {
+          await BypassBilling.trial(); await broadcast(); return snapshot();
+        }
         if (state.trialUsed) throw Error('Your trial has already been used on this installation.');
         const now = Date.now();
         await chrome.storage.local.set({ proLicense: { kind: 'local-trial', startedAt: now, lastSeen: now } });
@@ -71,7 +75,7 @@
           if (['study', 'work'].includes(state.mode)) state.progress.focusSeconds += seconds;
           const data = await chrome.storage.local.get('proLicense');
           await chrome.storage.local.set({ proUsage: { day: M.dayKey(), hosts }, proProgress: state.progress,
-            proLicense: { ...data.proLicense, lastSeen: Math.max(now, data.proLicense.lastSeen) } });
+            ...(!globalThis.BypassBilling?.enabled ? {proLicense: { ...data.proLicense, lastSeen: Math.max(now, data.proLicense.lastSeen) }} : {}) });
           state = await snapshot();
           return state;
         }
@@ -85,6 +89,7 @@
   const ensureAlarm = async () => {
     if (!(await chrome.alarms.get('pro-reconcile'))) await chrome.alarms.create('pro-reconcile', { periodInMinutes: 1 });
   };
+  globalThis.BypassProRefresh = () => serialize(broadcast);
   chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'pro-reconcile') void serialize(broadcast).catch(() => {}); });
   chrome.runtime.onStartup.addListener(() => { void ensureAlarm().catch(() => {}); void serialize(broadcast).catch(() => {}); });
   chrome.runtime.onInstalled.addListener(() => { void ensureAlarm().catch(() => {}); });

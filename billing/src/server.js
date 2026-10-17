@@ -1,0 +1,10 @@
+import nodemailer from 'nodemailer';
+import { config } from './config.js';
+import { database,rate } from './db.js';
+import { Paddle } from './paddle.js';
+import { Billing } from './service.js';
+import { server } from './http.js';
+const cfg=config(),pool=database(cfg),mail=nodemailer.createTransport(cfg.smtp);
+const app=server(new Billing(pool,cfg,new Paddle(cfg,fetch,()=>rate(pool,'paddle-global',cfg.paddleRpm,60)),mail));
+app.listen(cfg.port,'0.0.0.0',()=>console.log(JSON.stringify({event:'listening',port:cfg.port,environment:cfg.mode})));
+for(const signal of ['SIGTERM','SIGINT'])process.once(signal,()=>{app.close(async()=>{await pool.end();mail.close();process.exit(0);});setTimeout(()=>process.exit(1),15000).unref();});

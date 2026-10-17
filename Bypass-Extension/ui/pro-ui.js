@@ -5,7 +5,7 @@
     <section class="hero compact-hero"><p class="eyebrow">PERSONAL INTERNET AUTOPILOT · ALPHA</p><h1>Your internet, your rules.</h1><p class="sub">Private controls. Saved on this device. Free protection stays free.</p></section>
     <section class="site"><h2 id="pro-status">Checking Pro…</h2><p id="pro-expires" class="fine"></p>
       <button id="pro-trial" class="primary-button" type="button">Start my 7-day local trial</button>
-      <p class="fine">No card. No automatic charge. Trial access is local to this installation; paid billing is not connected in this alpha.</p>
+      <p id="pro-trial-note" class="fine">No card. No automatic charge. Trial access is local to this installation; paid billing is not connected in this alpha.</p>
       <button id="pro-manage" class="secondary-button" type="button">Open controls in a full tab</button>
     </section>
     <fieldset id="pro-controls" disabled>
@@ -44,8 +44,8 @@
   const time = minutes => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
   function render() {
     if (!state) return;
-    $('pro-status').textContent = state.active ? 'Pro trial is active' : state.trialUsed ? 'Trial ended · Free protection is still on' : 'Try Pro on your own websites';
-    $('pro-expires').textContent = state.expiresAt ? `Trial ends ${new Date(state.expiresAt).toLocaleString()}.` : 'Explore the working Pro controls for 7 days.';
+    $('pro-status').textContent = state.active ? state.plan==='pro' ? 'Pro is active' : 'Pro trial is active' : state.trialUsed ? 'Pro access ended · Free protection is still on' : 'Try Pro on your own websites';
+    $('pro-expires').textContent = state.expiresAt ? `${state.billingReady?'Verified offline access until':'Trial ends'} ${new Date(state.expiresAt).toLocaleString()}.` : 'Explore the working Pro controls for 7 days.';
     $('pro-trial').hidden = state.trialUsed;
     $('pro-controls').disabled = busy || !state.active;
     $('pro-trial').disabled = busy;
@@ -57,8 +57,9 @@
     state.config.limits.forEach((l, index) => item('pro-limits', `${l.host} · ${l.minutes} min/day · ${Math.floor((state.usage[l.host] || 0) / 60)} min today`, () => save({ limits: state.config.limits.filter((_, i) => i !== index) }, 'Limit removed.')));
     if (!state.config.rules.length) { const empty = document.createElement('li'); empty.textContent = 'No personal rules yet.'; $('pro-rules').append(empty); }
     $('pro-progress').textContent = `${state.progress.hidden || 0} personal distractions hidden · ${state.progress.skipAttempts || 0} media clicks attempted · ${Math.floor((state.progress.focusSeconds || 0) / 60)} focus minutes.`;
-    $('footer-plan').textContent = state.active ? 'Plan: Pro trial' : 'Plan: Free';
+    $('footer-plan').textContent = state.active ? state.plan==='pro'?'Plan: Pro':'Plan: Pro trial' : 'Plan: Free';
     $('footer-version').textContent = 'V0.7.0 alpha';
+    window.dispatchEvent(new Event('bypass-pro-rendered'));
   }
   async function run(task) {
     if (busy) return;
@@ -101,4 +102,5 @@
   }
   void run(async () => { state = await request('pro-get'); });
   addEventListener('focus', () => { if (!busy) void run(async () => { state = await request('pro-get'); }); });
+  addEventListener('bypass-account-updated', () => { if (!busy) void run(async () => { state = await request('pro-get'); }); });
 })();

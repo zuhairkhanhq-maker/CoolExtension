@@ -1,6 +1,6 @@
 'use strict';
 
-if (typeof importScripts === 'function') importScripts('../core/pro-model.js', 'pro-worker.js');
+if (typeof importScripts === 'function') importScripts('../core/billing-config.js', 'billing.js', '../core/pro-model.js', 'pro-worker.js');
 
 let writes = Promise.resolve();
 const counters = new Set([

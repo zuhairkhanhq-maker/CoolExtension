@@ -1,0 +1,11 @@
+import { readFile,cp,writeFile,mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const [apiOrigin,publicKeyPath]=process.argv.slice(2);
+if(!apiOrigin||!publicKeyPath)throw Error('Usage: node scripts/configure-extension.js https://billing.yourdomain.com /absolute/path/public-jwk.json');
+const url=new URL(apiOrigin);if(url.protocol!=='https:'||url.origin!==apiOrigin)throw Error('Use an HTTPS origin without a trailing slash.');
+const key=JSON.parse(await readFile(resolve(publicKeyPath),'utf8'));
+if(key.d||key.kty!=='EC'||key.crv!=='P-256'||!key.x||!key.y||!key.kid)throw Error('Provide only a public P-256 JWK with kid. Never pass the private key.');
+const source=new URL('../../Bypass-Extension/',import.meta.url),target=new URL('../../build/Bypass-Extension/',import.meta.url);
+await mkdir(target,{recursive:true});await cp(source,target,{recursive:true,filter:path=>!path.includes('/tests')});
+await writeFile(new URL('core/billing-config.js',target),`'use strict';\nglobalThis.BypassBillingConfig=Object.freeze(${JSON.stringify({enabled:true,apiOrigin,publicKeys:[key]})});\n`);
+console.log('Configured extension is in build/Bypass-Extension. Server secrets were not copied.');

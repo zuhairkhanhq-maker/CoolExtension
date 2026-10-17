@@ -1,4 +1,10 @@
 node_modules/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+build/
 Bypass-Extension/tests/*results.json
 Bypass-Extension/tests/*.png
 Bypass-Extension/tests/baseline-v0.5.2/
