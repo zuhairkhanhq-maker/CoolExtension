@@ -9,7 +9,7 @@ const sandbox = { URL, Date };
 vm.runInNewContext(fs.readFileSync(path.join(ROOT, 'core/pro-model.js'), 'utf8'), sandbox);
 const M = sandbox.BypassProModel;
 const results = [];
-async function test(name, fn) { const start = Date.now(); try { await fn(); results.push({ name, pass: true, ms: Date.now() - start }); console.log('PASS', name); } catch(e) { results.push({ name, pass: false, error: e.stack }); console.error('FAIL', name, e.message); } }
+async function test(name, fn) { const start = Date.now(); try { const detail = await fn(); results.push({ name, pass: true, ms: Date.now() - start, ...(detail ? {detail} : {}) }); console.log('PASS', name); } catch(e) { results.push({ name, pass: false, error: e.stack }); console.error('FAIL', name, e.message); } }
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 (async () => {
   await test('Model validates bounds and rejects malformed limits/rules', () => {
@@ -107,6 +107,28 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     await ui.evaluate(() => chrome.storage.local.set({'site:fixture.test':{paused:false}}));
     await page.waitForFunction(() => getComputedStyle(document.getElementById('distraction')).display === 'none');
   });
+  await test('Installed Study/Relax presets hide and restore supported YouTube regions', async()=>{
+    await context.route('https://www.youtube.com/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><html><body><main>Watch content</main><ytd-browse page-subtype="home"><ytd-rich-grid-renderer style="display:block;width:180px;height:60px">Feed</ytd-rich-grid-renderer></ytd-browse><ytd-comments style="display:block;width:180px;height:60px">Comments</ytd-comments><div id="secondary" style="width:180px;height:60px">Recommendations</div><nav>Navigation</nav></body></html>'}));
+    const youtube=await context.newPage();await youtube.goto('https://www.youtube.com/');
+    await request('pro-save',{config:{...config,mode:'study'}});
+    await youtube.waitForFunction(()=>getComputedStyle(document.querySelector('ytd-comments')).display==='none');
+    assert.equal(await youtube.locator('ytd-rich-grid-renderer').isVisible(),false);
+    assert.equal(await youtube.locator('#secondary').isVisible(),false);
+    assert.equal(await youtube.locator('main').isVisible(),true);
+    await request('pro-save',{config:{...config,mode:'relax'}});
+    await youtube.waitForFunction(()=>getComputedStyle(document.querySelector('ytd-comments')).display!=='none');
+    assert.equal(await youtube.locator('ytd-rich-grid-renderer').isVisible(),true);
+    await youtube.close();await page.bringToFront();await request('pro-save',{config});
+  });
+  await test('Pro handles a 12000-node mutation burst and keeps forms usable',async()=>{
+    config.rules=[{host:'fixture.test',kind:'hide',selector:'#busy-clutter'}];await request('pro-save',{config});
+    const start=Date.now();
+    await page.evaluate(()=>{const frag=document.createDocumentFragment();for(let i=0;i<12000;i++){const el=document.createElement('span');el.textContent='.';frag.append(el);}const target=document.createElement('div');target.id='busy-clutter';target.style.cssText='width:100px;height:40px';target.textContent='Clutter';frag.append(target);document.body.append(frag);});
+    await page.waitForFunction(()=>getComputedStyle(document.getElementById('busy-clutter')).display==='none',null,{timeout:10000});
+    await page.locator('#email').fill('qa@example.test');assert.equal(await page.locator('#email').inputValue(),'qa@example.test');
+    await page.evaluate(()=>document.getElementById('email').blur());
+    return {elapsedIncludingInsertionMs:Date.now()-start,nodes:12000};
+  });
   await test('Custom media rule never clicks a fake button without playing media', async () => {
     await page.evaluate(() => { globalThis.clicks=0; document.getElementById('fake').addEventListener('click',()=>globalThis.clicks++); });
     config.rules=[{host:'fixture.test',kind:'skip',selector:'#fake',action:'intro'}];await request('pro-save',{config});
@@ -134,6 +156,9 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     await page.locator('[data-bypass-pro="limit"]').getByRole('button',{name:'Continue for 10 minutes'}).click();
     assert.equal(await page.locator('[data-bypass-pro="limit"]').count(),0);
     assert.equal(await page.locator('main').isVisible(),true);
+    config.rules=[{host:'fixture.test',kind:'hide',selector:'#distraction'}];await request('pro-save',{config});
+    await page.waitForFunction(()=>getComputedStyle(document.getElementById('distraction')).display==='none');
+    config.rules=[];
     config.limits=[];await request('pro-save',{config});
   });
   await test('Sensitive checkout path remains untouched', async () => {

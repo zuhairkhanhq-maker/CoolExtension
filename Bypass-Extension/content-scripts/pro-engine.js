@@ -4,7 +4,7 @@
   const M = BypassProModel, hostname = location.hostname;
   let state = null, unsubscribe = null, maintenance = null, hidden = new Map(), clicked = new Map();
   let panel = null, picker = null, sitePaused = false, siteSettings = {}, generation = 0, tickBusy = false;
-  let deadline = 0, undoUntil = 0;
+  let deadline = 0, limitSnoozeUntil = 0;
   const send = async msg => { try { return await chrome.runtime.sendMessage(msg); } catch { return null; } };
   const protectedSelector = 'html,body,main,header,nav,footer,form,input,textarea,select,[contenteditable="true"],[role="main"],[role="navigation"]';
   const sensitive = /(^|\/)(checkout|cart|basket|buy|order|orders|payment|payments|billing|login|signin|sign-in|account|auth|oauth)(\/|$)/i;
@@ -53,7 +53,7 @@
     void send({ type: 'pro-event', key: 'skipAttempts' });
   }
   function scan(element) {
-    if (!permitted() || Date.now() < undoUntil || !(element instanceof HTMLElement) || panel?.contains(element) || picker?.contains(element)) return;
+    if (!permitted() || !(element instanceof HTMLElement) || panel?.contains(element) || picker?.contains(element)) return;
     if (sensitive.test(location.pathname)) return;
     if (hostname === 'www.youtube.com' || hostname === 'youtube.com') {
       const mode = state.mode;
@@ -76,7 +76,7 @@
   }
   function showLimit() {
     const limit = state?.config.limits.find(l => l.host === hostname);
-    const exceeded = permitted() && limit && (state.usage[hostname] || 0) >= limit.minutes * 60 && Date.now() >= undoUntil && !sensitive.test(location.pathname);
+    const exceeded = permitted() && limit && (state.usage[hostname] || 0) >= limit.minutes * 60 && Date.now() >= limitSnoozeUntil && !sensitive.test(location.pathname);
     if (!exceeded) { panel?.remove(); panel = null; return; }
     if (panel) return;
     panel = document.createElement('div');
@@ -89,7 +89,7 @@
     const note = document.createElement('p'); note.textContent = `${limit.minutes} minutes today. Take a break, or continue for 10 minutes. This is a reminder, not a hard block.`;
     const button = document.createElement('button'); button.textContent = 'Continue for 10 minutes';
     button.style.cssText = 'padding:12px;border:0;border-radius:9px;cursor:pointer;font:inherit;background:#e4ff99;color:#111';
-    button.addEventListener('click', () => { undoUntil = Date.now() + 600000; panel.remove(); panel = null; });
+    button.addEventListener('click', () => { limitSnoozeUntil = Date.now() + 600000; panel.remove(); panel = null; });
     box.append(title, note, button); root.append(box); document.documentElement.append(panel);
   }
   function apply(next) {
