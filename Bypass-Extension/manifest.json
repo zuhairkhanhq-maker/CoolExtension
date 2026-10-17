@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Bypass - Elite Web Optimizer",
+  "version": "0.7.0",
+  "version_name": "0.7.0 Internal Pro Alpha",
+  "description": "Local distraction cleanup, YouTube ad assistance and optional streaming intro skipping. Simple site controls. No tracking.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "alarms"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "action": {
+    "default_title": "Bypass",
+    "default_popup": "ui/popup.html",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "48": "assets/icon-48.png",
+      "128": "assets/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "core/pro-model.js",
+        "core/streaming-sites.js",
+        "core/runtime.js",
+        "content-scripts/dom-purger.js",
+        "content-scripts/distraction-cleaner.js",
+        "content-scripts/video-interceptor.js",
+        "content-scripts/streaming-skipper.js",
+        "content-scripts/pro-engine.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}

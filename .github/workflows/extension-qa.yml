@@ -1,0 +1,42 @@
+name: Extension QA
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - name: Worker and model checks
+        if: ${{ !cancelled() }}
+        run: npm run test:unit
+      - name: Free engine browser fixtures
+        if: ${{ !cancelled() }}
+        run: npm run test:free
+      - name: Free popup behavior checks
+        if: ${{ !cancelled() }}
+        run: npm run test:popup
+      - name: Installed MV3 Pro user flow
+        if: ${{ !cancelled() }}
+        run: npm run test:pro
+      - name: Retain test evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-qa-evidence
+          path: |
+            Bypass-Extension/tests/*results.json
+            Bypass-Extension/tests/*preview.png
+            Bypass-Extension/tests/pro-*.png
+          if-no-files-found: warn
+          retention-days: 7

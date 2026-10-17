@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Bypass</title>
+    <link rel="stylesheet" href="popup.css" />
+    <link rel="stylesheet" href="pro-ui.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"><img src="../assets/brand-mark.svg" alt="" /></span>
+        <span>
+          BYPASS
+          <small>ELITE WEB OPTIMIZER</small>
+        </span>
+      </div>
+      <span class="privacy-pill">LOCAL ONLY</span>
+    </header>
+
+    <nav class="workspace-tabs" role="tablist" aria-label="Bypass features">
+      <button id="clean-tab" class="workspace-tab" type="button" role="tab" aria-selected="true" aria-controls="clean-panel" data-panel="clean">Clean</button>
+      <button id="autopilot-tab" class="workspace-tab" type="button" role="tab" aria-selected="false" aria-controls="autopilot-panel" data-panel="autopilot">Autopilot <span class="pro-label">PRO</span></button>
+    </nav>
+
+    <main>
+      <section id="clean-panel" role="tabpanel" aria-labelledby="clean-tab">
+        <section class="hero compact-hero">
+          <p class="eyebrow">FREE PROTECTION</p>
+          <h1>Your web, uninterrupted.</h1>
+          <p class="sub">Set it once. Bypass keeps working when this popup closes.</p>
+        </section>
+
+        <section class="site">
+          <div class="site-heading">
+            <div>
+              <p class="eyebrow">THIS WEBSITE</p>
+              <h2 id="host">Loading…</h2>
+            </div>
+            <span id="state" class="status" role="status" aria-live="polite">Checking</span>
+          </div>
+          <p id="page-activity" class="sub">Checking this tab…</p>
+
+          <label class="control master-control">
+            <span>
+              <span id="enabled-label">Protect this website</span>
+              <small id="master-note">Your choices below run automatically</small>
+            </span>
+            <input id="enabled" aria-labelledby="enabled-label" aria-describedby="master-note" type="checkbox" role="switch" disabled />
+          </label>
+
+          <label class="control">
+            <span>
+              <span id="cookies-label">Clean website distractions</span>
+              <small id="cookie-note">Cookie banners, popups, support prompts and sticky ads</small>
+            </span>
+            <input id="cookies" aria-labelledby="cookies-label" aria-describedby="cookie-note" type="checkbox" role="switch" disabled />
+          </label>
+
+          <label class="control">
+            <span>
+              <span id="video-label">Assist YouTube ads</span>
+              <small id="video-note">Speeds up supported ads, then restores normal playback</small>
+            </span>
+            <input id="video" aria-labelledby="video-label" aria-describedby="video-note" type="checkbox" role="switch" disabled />
+          </label>
+
+          <div id="streaming-controls">
+            <label class="control">
+              <span>
+                <span id="skipIntro-label">Auto-skip intros</span>
+                <span class="beta">BETA</span>
+                <small id="streaming-note">Only when a supported skip button appears</small>
+              </span>
+              <input id="skipIntro" aria-labelledby="skipIntro-label" aria-describedby="streaming-note" type="checkbox" role="switch" disabled />
+            </label>
+            <p id="streaming-preview" class="platform-note">Works on supported Netflix, Prime Video and Disney+ web players.</p>
+            <details id="streaming-options" class="streaming-options">
+              <summary>More streaming choices</summary>
+              <label class="control">
+                <span>
+                  <span id="skipRecap-label">Skip recaps</span>
+                  <small id="recap-note">Leave off when you want the story reminder</small>
+                </span>
+                <input id="skipRecap" aria-labelledby="skipRecap-label" aria-describedby="recap-note" type="checkbox" role="switch" disabled />
+              </label>
+              <label class="control">
+                <span>
+                  <span id="autoNext-label">Start next episode</span>
+                  <small id="next-note">Only near the ending or after the episode finishes</small>
+                </span>
+                <input id="autoNext" aria-labelledby="autoNext-label" aria-describedby="next-note" type="checkbox" role="switch" disabled />
+              </label>
+              <p class="fine">Saved for this website. Bypass only uses recognized player controls.</p>
+            </details>
+          </div>
+        </section>
+
+        <details class="activity-details">
+          <summary>See my private activity</summary>
+          <p class="eyebrow">ALL-TIME · THIS DEVICE</p>
+          <section class="stats" aria-label="Local activity counters">
+            <div class="card"><strong id="banners">0</strong><span>Banners hidden</span></div>
+            <div class="card"><strong id="ads">0</strong><span>Ad breaks assisted</span></div>
+            <div class="card wide"><span>Other distractions cleared</span><strong id="distractions">0</strong></div>
+            <div class="card wide"><span>Streaming clicks attempted</span><strong id="streaming-count">0</strong></div>
+            <div class="card wide"><span>Reject clicks attempted</span><strong id="consent">0</strong></div>
+          </section>
+        </details>
+
+        <details class="activity-details">
+          <summary>What Bypass cleans</summary>
+          <p class="fine">Supported cookie banners, newsletter popups, unsolicited support prompts and labeled sticky ads. Sign-in, checkout, age checks and active chats stay available. Streaming beta works only on recognized Netflix, Prime Video and Disney+ web players.</p>
+        </details>
+
+        <p id="feedback" role="status" aria-live="polite">You can close this popup. Bypass keeps working.</p>
+        <button id="share" class="primary-button" type="button">Copy my activity summary <svg class="button-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg></button>
+        <p class="fine">Counts show local actions, not guaranteed time saved.</p>
+      </section>
+
+      <section id="autopilot-panel" role="tabpanel" aria-labelledby="autopilot-tab" tabindex="0" hidden>
+        <section class="hero autopilot-hero">
+          <div class="hero-badge-row">
+            <p class="eyebrow">PERSONAL INTERNET AUTOPILOT</p>
+            <span class="preview-pill">PRO PREVIEW</span>
+          </div>
+          <h1>Your internet, your rules.</h1>
+          <p class="sub">Choose how you want to browse. Autopilot handles the rest.</p>
+        </section>
+
+        <section class="mode-picker" aria-labelledby="mode-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">CHOOSE A MODE</p>
+              <h2 id="mode-title">One tap changes your browsing space</h2>
+            </div>
+            <span class="lock-mark" aria-label="Pro feature">PRO</span>
+          </div>
+
+          <button class="mode-card pro-trigger" type="button" data-pro-source="Study mode">
+            <span class="mode-icon study-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 6.5c2.5-1 5-.5 7.5 1.2v11c-2.5-1.7-5-2.2-7.5-1.2v-11Zm15 0c-2.5-1-5-.5-7.5 1.2v11c2.5-1.7 5-2.2 7.5-1.2v-11Z" /></svg></span>
+            <span class="mode-copy"><strong>Study</strong><small>Hide feeds, Shorts, recommendations and comments.</small></span>
+            <span class="mode-lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6.5" y="10" width="11" height="9" rx="2"/><path d="M9 10V7.5a3 3 0 0 1 6 0V10"/></svg></span>
+          </button>
+          <button class="mode-card pro-trigger" type="button" data-pro-source="Work mode">
+            <span class="mode-icon work-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="7" width="17" height="12" rx="2.5"/><path d="M8.5 7V5.5A1.5 1.5 0 0 1 10 4h4a1.5 1.5 0 0 1 1.5 1.5V7M3.5 11.5c4.8 2.2 12.2 2.2 17 0M10 13h4"/></svg></span>
+            <span class="mode-copy"><strong>Work</strong><small>Remove social distractions, notifications and autoplay.</small></span>
+            <span class="mode-lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6.5" y="10" width="11" height="9" rx="2"/><path d="M9 10V7.5a3 3 0 0 1 6 0V10"/></svg></span>
+          </button>
+          <button class="mode-card pro-trigger" type="button" data-pro-source="Relax mode">
+            <span class="mode-icon relax-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m10 8.8 5 3.2-5 3.2V8.8Z"/></svg></span>
+            <span class="mode-copy"><strong>Relax</strong><small>Keep entertainment clean and supported skipping ready.</small></span>
+            <span class="mode-lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6.5" y="10" width="11" height="9" rx="2"/><path d="M9 10V7.5a3 3 0 0 1 6 0V10"/></svg></span>
+          </button>
+        </section>
+
+        <section class="pro-value" aria-labelledby="pro-value-title">
+          <p class="eyebrow">WHAT PRO DOES FOR YOU</p>
+          <h2 id="pro-value-title">Set it once. Feel it every day.</h2>
+          <ul class="value-list">
+            <li><span class="value-check" aria-hidden="true">✓</span><span><strong>Personal website cleanup</strong><small>Point at distractions and keep them gone.</small></span></li>
+            <li><span class="value-check" aria-hidden="true">✓</span><span><strong>Automatic schedules</strong><small>Your preferred mode starts and ends on time.</small></span></li>
+            <li><span class="value-check" aria-hidden="true">✓</span><span><strong>Private progress</strong><small>See focus sessions and estimated time reclaimed locally.</small></span></li>
+          </ul>
+        </section>
+
+        <button class="primary-button pro-trigger" type="button" data-pro-source="Autopilot trial">Try Pro free for 7 days <svg class="button-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg></button>
+        <p class="trust-line">No card required · Free protection stays free forever</p>
+      </section>
+    </main>
+
+    <footer>
+      <span><span class="secure-dot" aria-hidden="true"></span> No tracking</span>
+      <span>Plan: Free</span>
+      <span>V0.6.1</span>
+    </footer>
+
+    <dialog id="pro-dialog" aria-labelledby="paywall-title" aria-describedby="paywall-subtitle">
+      <div class="dialog-shell">
+        <button id="close-paywall" class="icon-button" type="button" aria-label="Close Pro offer">×</button>
+        <span class="dialog-mark" aria-hidden="true"><img src="../assets/brand-mark.svg" alt="" /></span>
+        <p class="eyebrow">BYPASS PRO</p>
+        <h2 id="paywall-title">Make the internet work your way.</h2>
+        <p id="paywall-subtitle" class="sub">Personal cleanup, automatic focus modes and private progress—without tracking your browsing.</p>
+
+        <div class="trial-banner"><strong>7 days free</strong><span>Explore every Pro control. No card required.</span></div>
+
+        <div class="plan-options" role="radiogroup" aria-label="Choose a Pro plan">
+          <button class="plan-option selected" type="button" role="radio" aria-checked="true" data-plan="annual">
+            <span><strong>Annual</strong><small>Best value · $4.17/month</small></span>
+            <span><strong>$49.99</strong><small>per year</small></span>
+          </button>
+          <button class="plan-option" type="button" role="radio" aria-checked="false" data-plan="monthly">
+            <span><strong>Monthly</strong><small>Flexible billing</small></span>
+            <span><strong>$8.99</strong><small>per month</small></span>
+          </button>
+        </div>
+
+        <button id="start-trial" class="primary-button" type="button">Start my free trial <svg class="button-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg></button>
+        <p id="checkout-note" class="dialog-note" role="status" aria-live="polite">Design preview only. Pro access and billing are not connected yet.</p>
+        <p class="trust-line">Your existing Free features will never be removed.</p>
+      </div>
+    </dialog>
+
+    <script src="../core/streaming-sites.js"></script>
+    <script src="popup.js"></script>
+    <script src="pro-ui.js"></script>
+  </body>
+</html>
