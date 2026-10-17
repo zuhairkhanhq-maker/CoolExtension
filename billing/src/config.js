@@ -10,10 +10,11 @@ export function config(env = process.env) {
   const prices={monthly:required(env,'PADDLE_MONTHLY_PRICE_ID'),annual:required(env,'PADDLE_ANNUAL_PRICE_ID')};
   if(Object.values(prices).some(v=>!/^pri_[a-z0-9]{26}$/.test(v))||prices.monthly===prices.annual)throw Error('Invalid or duplicate prices.');
   if(new URL(required(env,'CHECKOUT_ORIGIN')).origin!==origin.origin)throw Error('CHECKOUT_ORIGIN must match PUBLIC_ORIGIN.');
+  let privateJwk;try{privateJwk=JSON.parse(required(env,'SIGNING_PRIVATE_JWK'));}catch{throw Error('Invalid SIGNING_PRIVATE_JWK JSON.');}
   return { origin:origin.origin, port:int(env,'PORT',3000,1,65535), database:required(env,'DATABASE_URL'), ssl:env.DB_SSL!=='false', poolMax:int(env,'DB_POOL_MAX',10,1,100), proxyHops:int(env,'TRUST_PROXY_HOPS',0,0,3), mode,
     paddleBase:mode==='live'?'https://api.paddle.com':'https://sandbox-api.paddle.com', paddleKey:required(env,'PADDLE_API_KEY'), webhookSecret:required(env,'PADDLE_WEBHOOK_SECRET'), prices,
     clientToken:required(env,'PADDLE_CLIENT_TOKEN'), paddleRpm:int(env,'PADDLE_RPM',180,1,10000), checkoutOrigin:new URL(required(env,'CHECKOUT_ORIGIN')).origin,
-    extensionOrigins:ids.map(id=>`chrome-extension://${id}`), hmac:secret, keyId:required(env,'SIGNING_KEY_ID'), privateJwk:JSON.parse(required(env,'SIGNING_PRIVATE_JWK')),
+    extensionOrigins:ids.map(id=>`chrome-extension://${id}`), hmac:secret, keyId:required(env,'SIGNING_KEY_ID'), privateJwk,
     grantSeconds:int(env,'GRANT_SECONDS',3600,300,86400), graceHours:int(env,'PAYMENT_GRACE_HOURS',72,0,168), maxStateAgeHours:int(env,'MAX_STATE_AGE_HOURS',24,6,168), sessionDays:int(env,'SESSION_DAYS',30,1,90),
     smtp:{host:required(env,'SMTP_HOST'),port:int(env,'SMTP_PORT',587,1,65535),secure:env.SMTP_SECURE==='true',auth:{user:required(env,'SMTP_USER'),pass:required(env,'SMTP_PASS')},requireTLS:env.SMTP_SECURE!=='true',connectionTimeout:10000,socketTimeout:15000}, mailFrom:required(env,'MAIL_FROM') };
 }

@@ -4,6 +4,7 @@ import {generateKeyPairSync,createHmac,randomUUID} from 'node:crypto';
 import {webhookValid,signer,verifyGrant} from '../src/security.js';
 import {accessPolicy} from '../src/policy.js';
 import {Paddle} from '../src/paddle.js';
+import {database} from '../src/db.js';
 const pair=generateKeyPairSync('ec',{namedCurve:'P-256'}),key=pair.privateKey.export({format:'jwk'}),s=signer(key,'test','https://billing.test');
 test('Raw-byte signature, rotated signatures, replay, future timestamp and tampering',()=>{
   const now=Date.now(),ts=String(Math.floor(now/1000)),raw=Buffer.from('{"hello": "world"}');const signature=createHmac('sha256','secret').update(`${ts}:`).update(raw).digest('hex');
@@ -51,4 +52,8 @@ test('Paddle pagination stops at has_more=false and never follows a foreign host
   assert.equal((await p.list('/customers')).length,1);assert.equal(calls,1);
   const bad=new Paddle({paddleBase:'https://api.paddle.com',paddleKey:'fixture'},async()=>new Response(JSON.stringify({data:[],meta:{pagination:{has_more:true,next:'https://evil.test/steal'}}})));
   await assert.rejects(()=>bad.list('/customers'),/host/);
+});
+test('Invalid secrets fail with redacted setup errors',()=>{
+  assert.throws(()=>database({database:'not-a-url-PRIVATE-PASSWORD'}),error=>error.message==='Invalid DATABASE_URL.');
+  assert.throws(()=>signer({kty:'EC',crv:'P-256',d:'PRIVATE-SECRET'},'test','https://billing.test'),error=>error.message==='Invalid signing private key.');
 });

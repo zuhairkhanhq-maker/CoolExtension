@@ -12,7 +12,7 @@ export function webhookValid(raw, header, secret, now = Date.now()) {
   return parts.some(([key, value]) => key === 'h1' && /^[a-f0-9]{64}$/i.test(value || '') && timingSafeEqual(expected, Buffer.from(value, 'hex')));
 }
 export function signer(jwk, keyId, issuer) {
-  const privateKey = createPrivateKey({ key: jwk, format: 'jwk' });
+  let privateKey;try{privateKey=createPrivateKey({ key: jwk, format: 'jwk' });}catch{throw Error('Invalid signing private key.');}
   if (jwk.kty !== 'EC' || jwk.crv !== 'P-256' || !jwk.d) throw Error('Expected a private P-256 JWK.');
   const publicJwk = createPublicKey(privateKey).export({ format: 'jwk' });
   return {
