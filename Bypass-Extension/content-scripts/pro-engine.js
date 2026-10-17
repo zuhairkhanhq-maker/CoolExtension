@@ -3,7 +3,7 @@
   if (window.top !== window || !globalThis.Bypass) return;
   const M = BypassProModel, hostname = location.hostname;
   let state = null, unsubscribe = null, maintenance = null, hidden = new Map(), clicked = new Map();
-  let panel = null, picker = null, sitePaused = false, generation = 0, tickBusy = false;
+  let panel = null, picker = null, sitePaused = false, siteSettings = {}, generation = 0, tickBusy = false;
   let deadline = 0, undoUntil = 0;
   const send = async msg => { try { return await chrome.runtime.sendMessage(msg); } catch { return null; } };
   const protectedSelector = 'html,body,main,header,nav,footer,form,input,textarea,select,[contenteditable="true"],[role="main"],[role="navigation"]';
@@ -32,7 +32,9 @@
   function permitted() { return state?.active && Date.now() < deadline && !sitePaused && !document.hidden; }
   function isMatch(element, selector) { try { return element.matches(selector); } catch { return false; } }
   function mediaSkip(element, rule) {
-    if (!element.matches('button,[role="button"]') || element.closest('form') || element.getAttribute('aria-disabled') === 'true' || element.disabled) return;
+    const builtInKey = { intro: 'skipIntro', recap: 'skipRecap', next: 'autoNext' }[rule.action];
+    if (globalThis.BypassStreaming?.site(hostname) && siteSettings[builtInKey]) return;
+    if (!element.matches('button,[role="button"]') || element.closest('form') || element.form || element.hasAttribute('form') || element.getAttribute('aria-disabled') === 'true' || element.disabled) return;
     const labels = { intro: /^(skip intro|skip opening)$/i, recap: /^skip recap$/i, next: /^(next episode|play next episode)$/i };
     const label = (element.getAttribute('aria-label') || element.textContent || '').trim();
     if (!labels[rule.action]?.test(label)) return;
@@ -79,7 +81,7 @@
     if (panel) return;
     panel = document.createElement('div');
     panel.dataset.bypassPro = 'limit';
-    const root = panel.attachShadow({ mode: 'closed' });
+    const root = panel.attachShadow({ mode: 'open' });
     const box = document.createElement('section');
     box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Daily website limit reached');
     box.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:2147483647;padding:24px;max-width:320px;background:#111827;color:#fff;border:1px solid #475569;border-radius:18px;font:16px/1.5 system-ui;box-shadow:0 12px 40px #0008';
@@ -157,8 +159,15 @@
     }
   });
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes[`site:${hostname}`]) { sitePaused = changes[`site:${hostname}`].newValue?.paused === true; if (state) apply(state); }
+    if (area === 'local' && changes[`site:${hostname}`]) { siteSettings = changes[`site:${hostname}`].newValue || {}; sitePaused = siteSettings.paused === true; if (state) apply(state); }
   });
+  document.addEventListener('click', event => {
+    if (!event.isTrusted || !state?.active) return;
+    const element = event.target instanceof Element ? event.target.closest('button,[role="button"]') : null;
+    if (!element || !state.config.rules.some(r => r.host === hostname && r.kind === 'skip' && isMatch(element, r.selector))) return;
+    const video = [...document.querySelectorAll('video')].find(v => !v.paused);
+    if (video && clicked.size < 128) clicked.set(element, { source: video.currentSrc, time: video.currentTime });
+  }, true);
   async function refresh() {
     const ticket = ++generation;
     const response = await send({ type: 'pro-get' });
@@ -175,5 +184,5 @@
   document.addEventListener('visibilitychange', resume);
   addEventListener('pagehide', () => { clearInterval(interval); stop(); generation++; });
   addEventListener('pageshow', resume);
-  chrome.storage.local.get(`site:${hostname}`).then(data => { sitePaused = data[`site:${hostname}`]?.paused === true; resume(); }).catch(() => {});
+  chrome.storage.local.get(`site:${hostname}`).then(data => { siteSettings = data[`site:${hostname}`] || {}; sitePaused = siteSettings.paused === true; resume(); }).catch(() => {});
 })();

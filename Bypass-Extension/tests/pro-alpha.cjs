@@ -88,6 +88,17 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     config.rules=[]; await request('pro-save',{config});
     await page.waitForFunction(() => getComputedStyle(document.getElementById('distraction')).display === 'flex');
   });
+  await test('Trusted element picker confirms, saves a real rule, hides and reverses it', async()=>{
+    const tabId=await worker.evaluate(async()=> (await chrome.tabs.query({url:'https://fixture.test/*'}))[0].id);
+    const selected=await worker.evaluate(async tabId=>chrome.tabs.sendMessage(tabId,{type:'pro-pick',kind:'hide'}),tabId);
+    assert.equal(selected.ok,true);
+    page.once('dialog',dialog=>dialog.accept());
+    await page.locator('#distraction').click();
+    await page.waitForFunction(()=>getComputedStyle(document.getElementById('distraction')).display==='none');
+    assert.equal((await request('pro-get')).state.config.rules.length,1);
+    config.rules=[];await request('pro-save',{config});
+    await page.waitForFunction(()=>getComputedStyle(document.getElementById('distraction')).display==='flex');
+  });
   await test('Site pause restores selected elements, resume re-applies', async () => {
     config.rules=[{host:'fixture.test',kind:'hide',selector:'#distraction'}]; await request('pro-save',{config});
     await page.waitForFunction(() => getComputedStyle(document.getElementById('distraction')).display === 'none');
@@ -110,6 +121,20 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     await page.evaluate(()=>{document.getElementById('fake').textContent='Buy now';});
     await request('pro-save',{config:{...config,mode:'work'}});
     await sleep(500);assert.equal(await page.evaluate(()=>globalThis.clicks),1);
+    await page.evaluate(()=>{document.getElementById('fake').textContent='Skip Intro';document.querySelector('form').id='purchase';document.getElementById('fake').setAttribute('form','purchase');});
+    await request('pro-save',{config:{...config,mode:'study'}});
+    await sleep(500);assert.equal(await page.evaluate(()=>globalThis.clicks),1);
+  });
+  await test('Exceeded daily budget shows an accessible dismissible reminder, not a hard block',async()=>{
+    config.rules=[];config.limits=[{host:'fixture.test',minutes:1}];
+    await request('pro-save',{config});
+    await ui.evaluate(async()=>{const now=new Date();const day=`${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;await chrome.storage.local.set({proUsage:{day,hosts:{'fixture.test':61}}});});
+    const s=(await request('pro-get')).state;
+    await worker.evaluate(async state=>{for(const t of await chrome.tabs.query({url:'https://fixture.test/*'}))await chrome.tabs.sendMessage(t.id,{type:'pro-state',state});},s);
+    await page.locator('[data-bypass-pro="limit"]').getByRole('button',{name:'Continue for 10 minutes'}).click();
+    assert.equal(await page.locator('[data-bypass-pro="limit"]').count(),0);
+    assert.equal(await page.locator('main').isVisible(),true);
+    config.limits=[];await request('pro-save',{config});
   });
   await test('Sensitive checkout path remains untouched', async () => {
     config.rules=[{host:'fixture.test',kind:'hide',selector:'#distraction'}];await request('pro-save',{config});

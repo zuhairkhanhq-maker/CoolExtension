@@ -55,10 +55,10 @@
     state.config.rules.forEach((rule, index) => item('pro-rules', `${rule.host} · ${rule.kind === 'hide' ? 'Hide' : rule.action} · ${rule.selector}`, () => save({ rules: state.config.rules.filter((_, i) => i !== index) }, 'Rule removed. Its elements are restored.')));
     state.config.schedules.forEach((s, index) => item('pro-schedules', `${s.mode} · ${time(s.start)}–${time(s.end)} · ${s.days.length === 7 ? 'Every day' : s.days.map(d => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}`, () => save({ schedules: state.config.schedules.filter((_, i) => i !== index) }, 'Schedule removed.')));
     state.config.limits.forEach((l, index) => item('pro-limits', `${l.host} · ${l.minutes} min/day · ${Math.floor((state.usage[l.host] || 0) / 60)} min today`, () => save({ limits: state.config.limits.filter((_, i) => i !== index) }, 'Limit removed.')));
-    if (!state.config.rules.length) $('pro-rules').textContent = 'No personal rules yet.';
+    if (!state.config.rules.length) { const empty = document.createElement('li'); empty.textContent = 'No personal rules yet.'; $('pro-rules').append(empty); }
     $('pro-progress').textContent = `${state.progress.hidden || 0} personal distractions hidden · ${state.progress.skipAttempts || 0} media clicks attempted · ${Math.floor((state.progress.focusSeconds || 0) / 60)} focus minutes.`;
-    document.querySelector('footer span:nth-child(2)').textContent = state.active ? 'Plan: Pro trial' : 'Plan: Free';
-    document.querySelector('footer span:last-child').textContent = 'V0.7.0 alpha';
+    $('footer-plan').textContent = state.active ? 'Plan: Pro trial' : 'Plan: Free';
+    $('footer-version').textContent = 'V0.7.0 alpha';
   }
   async function run(task) {
     if (busy) return;
