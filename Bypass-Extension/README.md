@@ -1,6 +1,6 @@
 # Bypass – Elite Web Optimizer · V0.7.0 internal Pro alpha
 
-Current status: local Pro processing is implemented, but browser integration/visual QA is blocked and paid billing is not configured. Read PRO-ALPHA-README.md and PRO-QA-REPORT.md first. The 0.6.1 notes below describe historical baseline work, not validation of 0.7.0.
+Current status: local Pro processing is implemented and the GitHub Chromium fixture suites pass. Paid billing is not configured, and authenticated live-platform/device checks remain. Read PRO-ALPHA-README.md and PRO-QA-REPORT.md first. The 0.6.1 notes below describe historical baseline work, not validation of 0.7.0.
 
 ## V0.6.1 visual identity polish
 

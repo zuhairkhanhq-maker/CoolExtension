@@ -32,6 +32,7 @@
   function permitted() { return state?.active && Date.now() < deadline && !sitePaused && !document.hidden; }
   function isMatch(element, selector) { try { return element.matches(selector); } catch { return false; } }
   function mediaSkip(element, rule) {
+    if (document.activeElement?.matches('input,textarea,select,[contenteditable="true"]')) return;
     const builtInKey = { intro: 'skipIntro', recap: 'skipRecap', next: 'autoNext' }[rule.action];
     if (globalThis.BypassStreaming?.site(hostname) && siteSettings[builtInKey]) return;
     if (!element.matches('button,[role="button"]') || element.closest('form') || element.form || element.hasAttribute('form') || element.getAttribute('aria-disabled') === 'true' || element.disabled) return;
@@ -72,7 +73,6 @@
     maintenance?.(); maintenance = null;
     restore(); panel?.remove(); panel = null;
     cancelPicker();
-    clicked.clear();
   }
   function showLimit() {
     const limit = state?.config.limits.find(l => l.host === hostname);

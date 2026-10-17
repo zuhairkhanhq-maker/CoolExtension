@@ -31,6 +31,6 @@ This is a working local-engine alpha, not a paid production release. The 0.6.1 f
 
 ## Validation
 
-Run `node tests/pro-worker.cjs` for dependency-free model/worker checks. Run `node tests/pro-alpha.cjs` with Playwright and Chromium installed for real extension/browser fixtures. The latter is blocked in the current environment because Chromium is absent and its downloaded archive is invalid. Do not interpret earlier baseline test reports as passing 0.7.0.
+Run `node tests/pro-worker.cjs` for dependency-free model/worker checks. Run `node tests/pro-alpha.cjs` with Playwright and Chromium installed for real extension/browser fixtures. GitHub Actions now runs these suites successfully; see PRO-QA-REPORT.md for the exact evidence and boundaries. Do not interpret fixture success as universal live-platform compatibility or paid billing readiness.
 
 Before charging: run real Chrome integration/visual QA, authenticated streaming tests, a multi-day sleep/restart/SPA soak, accessibility checks, performance profiles on low-end devices, and billing lifecycle tests against the chosen provider's sandbox. Recruit a small beta cohort before promotion.
