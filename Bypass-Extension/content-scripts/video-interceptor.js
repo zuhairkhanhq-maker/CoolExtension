@@ -5,6 +5,7 @@
   const PLAYER = '.html5-video-player';
   const SKIP = '.ytp-skip-ad-button,.ytp-ad-skip-button,.ytp-ad-skip-button-modern';
   const RATE = 16;
+  const MEDIA_EVENTS = ['loadstart', 'emptied', 'loadedmetadata', 'playing'];
   api.register('video', () => {
     const players = new Map();
     let alive = true,
@@ -35,7 +36,7 @@
       for (const [video, snapshot] of state.modified) restore(video, snapshot);
       if (count && state.helped) void api.metric('ads_skipped');
       state.modified.clear();
-      state.clicked = new WeakSet();
+      state.clicked = new WeakMap();
       state.active = false;
       state.helped = false;
       report();
@@ -54,10 +55,7 @@
         }
         for (const video of state.videos)
           if (!video.isConnected || owner(video) !== player) {
-            const snapshot = state.modified.get(video);
-            if (snapshot) restore(video, snapshot);
-            state.modified.delete(video);
-            state.videos.delete(video);
+            forgetVideo(video, state);
           }
         for (const button of state.buttons)
           if (!button.isConnected || owner(button) !== player) state.buttons.delete(button);
@@ -67,43 +65,94 @@
     const unmaintain = api.maintain(prune);
     function remove(player, state) {
       finish(state, false);
+      for (const video of state.videos) forgetVideo(video, state);
       state.observer.disconnect();
       players.delete(player);
       report();
     }
+    function forgetVideo(video, state) {
+      const snapshot = state.modified.get(video);
+      if (snapshot) restore(video, snapshot);
+      const listener = state.mediaListeners.get(video);
+      for (const event of MEDIA_EVENTS) video.removeEventListener(event, listener);
+      state.mediaListeners.delete(video);
+      state.modified.delete(video);
+      state.videos.delete(video);
+    }
+    function trackVideo(video, player, state) {
+      if (state.videos.has(video) || state.videos.size >= 16) return;
+      state.videos.add(video);
+      const listener = (event) => {
+        if (!alive || owner(video) !== player) return;
+        const snapshot = state.modified.get(video);
+        if (event.type !== 'playing') {
+          if (snapshot) {
+            snapshot.pending = true;
+            snapshot.loading = true;
+          }
+          state.clicked = new WeakMap();
+          state.started = performance.now();
+          state.timedOut = false;
+        } else if (snapshot?.loading) {
+          snapshot.pending = true;
+          snapshot.loading = false;
+        }
+        check(player, state);
+      };
+      state.mediaListeners.set(video, listener);
+      for (const event of MEDIA_EVENTS) video.addEventListener(event, listener);
+    }
     function accelerate(video, state) {
-      if (state.modified.has(video) || video.paused || video.ended || video.readyState === 0)
+      if (video.paused || video.ended || video.readyState === 0)
         return;
-      const snapshot = {
-        rate: video.playbackRate,
-        muted: video.muted,
-        rateOwned: false,
-        muteOwned: false,
-        onRate: null,
-        onVolume: null,
-      };
-      snapshot.onRate = () => {
-        if (video.playbackRate !== RATE) snapshot.rateOwned = false;
-      };
-      snapshot.onVolume = () => {
-        if (!video.muted) snapshot.muteOwned = false;
-      };
-      state.modified.set(video, snapshot);
+      let snapshot = state.modified.get(video);
+      if (snapshot) {
+        if (video.currentSrc !== snapshot.source || video.currentTime < snapshot.time - 1) {
+          snapshot.pending = true;
+          state.clicked = new WeakMap();
+          state.started = performance.now();
+        }
+        snapshot.source = video.currentSrc;
+        snapshot.time = video.currentTime;
+      }
+      if (snapshot && !snapshot.pending) return;
+      if (!snapshot) {
+        snapshot = {
+          rate: video.playbackRate,
+          muted: video.muted,
+          rateOwned: false,
+          muteOwned: false,
+          onRate: null,
+          onVolume: null,
+          pending: true,
+          loading: video.readyState < 3,
+          source: video.currentSrc,
+          time: video.currentTime,
+        };
+        snapshot.onRate = () => {
+          if (video.playbackRate !== RATE) snapshot.rateOwned = false;
+        };
+        snapshot.onVolume = () => {
+          if (!video.muted) snapshot.muteOwned = false;
+        };
+        state.modified.set(video, snapshot);
+        video.addEventListener('ratechange', snapshot.onRate);
+        video.addEventListener('volumechange', snapshot.onVolume);
+      }
+      snapshot.pending = false;
       try {
         if (video.playbackRate !== RATE) {
           video.playbackRate = RATE;
           snapshot.rateOwned = video.playbackRate === RATE;
         }
-        if (!snapshot.rateOwned) return;
+        if (video.playbackRate !== RATE) return;
         if (!video.muted) {
           video.muted = true;
           snapshot.muteOwned = video.muted;
         }
-        video.addEventListener('ratechange', snapshot.onRate);
-        video.addEventListener('volumechange', snapshot.onVolume);
         state.helped = true;
       } catch {
-        restore(video, snapshot);
+        // Retry only on the next media load, never on every polling tick.
       }
     }
     function skip(player, state) {
@@ -113,12 +162,13 @@
           continue;
         }
         if (
-          state.clicked.has(button) ||
           button.matches(':disabled') ||
           button.getAttribute('aria-disabled') === 'true' ||
           button.closest('[hidden],[inert],[aria-hidden="true"]')
-        )
+        ) {
+          state.clicked.delete(button);
           continue;
+        }
         const rect = button.getBoundingClientRect(),
           style = getComputedStyle(button);
         if (
@@ -127,9 +177,13 @@
           style.visibility !== 'visible' ||
           style.display === 'none' ||
           Number(style.opacity) === 0
-        )
+        ) {
+          state.clicked.delete(button);
           continue;
-        state.clicked.add(button);
+        }
+        const attempt = state.clicked.get(button), now = performance.now();
+        if (attempt && (attempt.count >= 3 || now - attempt.at < 1000)) continue;
+        state.clicked.set(button, { at: now, count: (attempt?.count || 0) + 1 });
         try {
           button.click();
           state.helped = true;
@@ -161,15 +215,13 @@
       }
       for (const video of state.videos) {
         if (!video.isConnected || owner(video) !== player) {
-          const snapshot = state.modified.get(video);
-          if (snapshot) restore(video, snapshot);
-          state.modified.delete(video);
-          state.videos.delete(video);
+          forgetVideo(video, state);
           continue;
         }
         accelerate(video, state);
       }
       skip(player, state);
+      if (!ad(player)) finish(state, true);
       schedule();
     }
     function schedule() {
@@ -187,9 +239,10 @@
       if (players.size >= 8) return null;
       const state = {
         videos: new Set(),
+        mediaListeners: new Map(),
         buttons: new Set(),
         modified: new Map(),
-        clicked: new WeakSet(),
+        clicked: new WeakMap(),
         active: false,
         helped: false,
         timedOut: false,
@@ -211,7 +264,7 @@
       prune();
       const state = register(player);
       if (!state) return;
-      if (video && state.videos.size < 16) state.videos.add(element);
+      if (video) trackVideo(element, player, state);
       if (button && state.buttons.size < 16) state.buttons.add(element);
       check(player, state);
     });

@@ -508,6 +508,129 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
     await p.close();
   });
 
+  await test('YouTube ad pod reuses media without a class transition or toggle reset', async () => {
+    const base = state.ads_skipped || 0;
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video></div>',
+      'www.youtube.com', videoSetup
+    );
+    await waitFor(p, () => document.querySelector('video').playbackRate === 16);
+    for (let i = 0; i < 3; i++) {
+      await p.locator('video').evaluate((v) => {
+        v.dispatchEvent(new Event('loadstart'));
+        v.playbackRate = 1;
+        v.muted = false;
+        v.dispatchEvent(new Event('loadedmetadata'));
+        // YouTube may reset playback again after metadata, before playback resumes.
+        v.playbackRate = 1;
+        v.muted = false;
+        v.dispatchEvent(new Event('playing'));
+      });
+      await waitFor(p, () => document.querySelector('video').playbackRate === 16 && document.querySelector('video').muted);
+    }
+    await p.locator('.html5-video-player').evaluate((e) => e.classList.remove('ad-showing'));
+    await waitFor(p, () => document.querySelector('video').playbackRate === 1.5 && !document.querySelector('video').muted);
+    await p.waitForTimeout(100);
+    assert.equal(state.ads_skipped, base + 1, 'one counter per contiguous assisted ad episode');
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
+  await test('YouTube reuses its skip button for the next ad in the same pod', async () => {
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video><button class="ytp-skip-ad-button" onclick="window.clicks=(window.clicks||0)+1;if(window.clicks===2)this.parentElement.classList.remove(\'ad-showing\')">Skip ad</button></div>',
+      'www.youtube.com', videoSetup
+    );
+    await waitFor(p, () => window.clicks === 1);
+    await p.locator('video').evaluate((v) => {
+      v.playbackRate = 1;
+      v.dispatchEvent(new Event('loadstart'));
+      v.dispatchEvent(new Event('playing'));
+    });
+    await waitFor(p, () => window.clicks === 2);
+    await waitFor(p, () => document.querySelector('video').playbackRate === 1.5 && !document.querySelector('video').muted);
+    await p.waitForTimeout(250);
+    assert.equal(await p.evaluate(() => window.clicks), 2);
+    await p.close();
+  });
+  await test('YouTube clicks a delayed visible enabled skip button only during an ad', async () => {
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video><button hidden disabled class="ytp-ad-skip-button-modern" onclick="window.clicks=(window.clicks||0)+1;this.parentElement.classList.remove(\'ad-showing\')">Skip ad</button></div>',
+      'www.youtube.com', videoSetup
+    );
+    await waitFor(p, () => document.querySelector('video').playbackRate === 16);
+    await p.waitForTimeout(200);
+    assert.equal(await p.evaluate(() => window.clicks || 0), 0);
+    await p.locator('button').evaluate((b) => { b.hidden = false; });
+    await p.waitForTimeout(200);
+    assert.equal(await p.evaluate(() => window.clicks || 0), 0);
+    await p.locator('button').evaluate((b) => { b.disabled = false; });
+    await waitFor(p, () => window.clicks === 1);
+    await p.locator('button').evaluate((b) => { b.hidden = true; b.hidden = false; });
+    await p.waitForTimeout(250);
+    assert.equal(await p.evaluate(() => window.clicks), 1);
+    await p.close();
+  });
+  await test('YouTube MSE timeline reset rearms assistance without media load events', async () => {
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video></div>',
+      'www.youtube.com', videoSetup + `document.addEventListener('DOMContentLoaded',()=>{window.adTime=12;Object.defineProperty(document.querySelector('video'),'currentTime',{get:()=>window.adTime});});`
+    );
+    await waitFor(p, () => document.querySelector('video').playbackRate === 16);
+    await p.locator('video').evaluate((v) => {
+      window.adTime = 0;
+      v.playbackRate = 1;
+      v.muted = false;
+    });
+    await waitFor(p, () => document.querySelector('video').playbackRate === 16 && document.querySelector('video').muted);
+    await p.locator('.html5-video-player').evaluate((e) => e.classList.remove('ad-showing'));
+    await waitFor(p, () => document.querySelector('video').playbackRate === 1.5 && !document.querySelector('video').muted);
+    await p.close();
+  });
+  await test('YouTube retries an ignored skip click with a bounded cooldown', async () => {
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video><button class="ytp-skip-ad-button" onclick="window.clicks=(window.clicks||0)+1">Skip ad</button></div>',
+      'www.youtube.com', videoSetup
+    );
+    await waitFor(p, () => window.clicks === 1);
+    await p.waitForTimeout(400);
+    assert.equal(await p.evaluate(() => window.clicks), 1);
+    await waitFor(p, () => window.clicks === 3);
+    await p.waitForTimeout(1200);
+    assert.equal(await p.evaluate(() => window.clicks), 3);
+    await p.close();
+  });
+  await test('YouTube unloaded next ad waits for playback and disabling removes media listeners', async () => {
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video></div>',
+      'www.youtube.com', videoSetup
+    );
+    await waitFor(p, () => document.querySelector('video').playbackRate === 16);
+    await p.locator('video').evaluate((v) => {
+      Object.defineProperty(v, 'readyState', { get: () => 0, configurable: true });
+      v.dispatchEvent(new Event('emptied'));
+      v.playbackRate = 1;
+    });
+    await p.waitForTimeout(200);
+    assert.equal(await p.locator('video').evaluate(v => v.playbackRate), 1);
+    await p.locator('video').evaluate((v) => {
+      Object.defineProperty(v, 'readyState', { get: () => 4, configurable: true });
+      v.dispatchEvent(new Event('playing'));
+    });
+    await waitFor(p, () => document.querySelector('video').playbackRate === 16);
+    await setting('www.youtube.com', 'video', false);
+    await waitFor(p, () => document.querySelector('video').playbackRate === 1.5);
+    await p.locator('video').evaluate((v) => {
+      v.dispatchEvent(new Event('loadstart'));
+      v.dispatchEvent(new Event('loadedmetadata'));
+      v.dispatchEvent(new Event('playing'));
+    });
+    await p.waitForTimeout(200);
+    assert.equal(await p.locator('video').evaluate(v => v.playbackRate), 1.5);
+    assert.equal(await p.locator('video').evaluate(v => v.muted), false);
+    await p.close();
+    await setting('www.youtube.com', 'video', true);
+  });
+
   await test('Visibility-only changes reveal banners promptly', async () => {
     for (const attr of ['hidden', 'style', 'aria-hidden']) {
       const p = await fixture(

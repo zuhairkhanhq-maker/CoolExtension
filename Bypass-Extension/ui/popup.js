@@ -107,7 +107,7 @@ function render() {
       ? 'Available on YouTube only'
       : !enabled
         ? 'Turn on Bypass above to use this'
-        : 'Normal speed and sound return after the ad'
+        : 'Speeds up ads · Auto-clicks Skip Ad when available'
   );
   setText(
     'streaming-note',

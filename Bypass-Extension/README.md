@@ -44,7 +44,7 @@ Use the same installed folder to preserve extension identity and counters. Exist
 ## Simple controls
 - **Enable Bypass on this site:** master ON/OFF for the exact hostname.
 - **Reduce distractions:** supported cookie banners, newsletter prompts, unsolicited support nudges, and labeled sticky advertising slots. This replaces the previous Hide cookie banners label. Your existing choice is retained.
-- **Speed up YouTube ads:** independent supported-player assistance on YouTube. Other sites show this unavailable.
+- **Assist YouTube ads:** speeds up supported ads and clicks visible, enabled Skip Ad buttons when available. Consecutive ads rearm assistance without toggling it. Normal playback speed and sound are restored afterward. YouTube controls when skipping becomes available; unskippable ads cannot be forced to offer a skip button. Other sites show this unavailable.
 - **Auto-skip intros (Beta):** always visible for discovery and initially OFF. It becomes configurable on recognized Netflix, Prime Video and Disney+ domains.
 - **More streaming options:** separate Skip recaps and Start next episode toggles, initially OFF. Choices are saved per exact hostname.
 - **Activity on this device:** expandable all-time counters; the line above the controls is this document's activity only.
