@@ -38,8 +38,8 @@ jobs:
       - name: Downloadable free extension
         uses: actions/upload-artifact@v4
         with:
-          name: Bypass-Free-v0.9.1
-          path: build/Bypass-Free-v0.9.1.zip
+          name: Bypass-Free-v0.9.2
+          path: build/Bypass-Free-v0.9.2.zip
           if-no-files-found: error
       - name: Retain test evidence
         if: ${{ !cancelled() }}

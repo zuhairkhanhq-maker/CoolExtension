@@ -149,6 +149,71 @@ async function popup(worker, id) {
         !document.querySelector("video").muted,
     );
   });
+  await test("Installed assistance retries a reused Skip Ad control and accelerates the following ad", async () => {
+    await page.evaluate(() => {
+      const player = document.querySelector(".html5-video-player");
+      const old = player.querySelector(".ytp-skip-ad-button");
+      old.hidden = true;
+      old.disabled = true;
+      const slot = document.createElement("div");
+      slot.className = "ytp-ad-skip-button-slot";
+      const button = document.createElement("button");
+      button.textContent = "Skip ads";
+      window.retryStage = 1;
+      window.retryClicks = 0;
+      button.addEventListener("click", () => {
+        window.retryClicks += 1;
+        if (window.retryStage === 1 && window.retryClicks >= 5)
+          player.classList.remove("ad-showing");
+        if (window.retryStage === 2) {
+          window.secondAdRate = player.querySelector("video").playbackRate;
+          window.secondAdDefaultRate =
+            player.querySelector("video").defaultPlaybackRate;
+          player.classList.remove("ad-showing");
+        }
+      });
+      slot.append(button);
+      player.append(slot);
+      player.classList.add("ad-showing");
+    });
+    await page.waitForFunction(
+      () =>
+        window.retryClicks >= 5 &&
+        !document
+          .querySelector(".html5-video-player")
+          .classList.contains("ad-showing"),
+    );
+    await page.waitForFunction(
+      () =>
+        document.querySelector("video").playbackRate === 1.5 &&
+        document.querySelector("video").defaultPlaybackRate === 1.5,
+    );
+    await page.evaluate(() => {
+      const player = document.querySelector(".html5-video-player");
+      const video = player.querySelector("video");
+      window.retryStage = 2;
+      window.retryClicks = 0;
+      video.defaultPlaybackRate = 1;
+      video.playbackRate = 1;
+      video.muted = false;
+      player.classList.add("ad-showing");
+    });
+    await page.waitForFunction(
+      () =>
+        window.retryClicks >= 1 &&
+        window.secondAdRate === 16 &&
+        window.secondAdDefaultRate === 16 &&
+        !document
+          .querySelector(".html5-video-player")
+          .classList.contains("ad-showing"),
+    );
+    await page.waitForFunction(
+      () =>
+        document.querySelector("video").playbackRate === 1.5 &&
+        document.querySelector("video").defaultPlaybackRate === 1.5 &&
+        !document.querySelector("video").muted,
+    );
+  });
   await test("Popup switch disables and re-enables the actual installed video engine", async () => {
     await page.locator(".ytp-skip-ad-button").evaluate((button) => {
       button.hidden = true;

@@ -1,4 +1,4 @@
-# Bypass 0.9.1
+# Bypass 0.9.2
 
 Only the original Free features remain. Autopilot, personal rules, focus modes, schedules, website limits, trials and billing have been removed. No account or backend is required.
 

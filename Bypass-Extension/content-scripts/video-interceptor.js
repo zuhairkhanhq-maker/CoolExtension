@@ -8,7 +8,10 @@
     return;
   const PLAYER = ".html5-video-player";
   const SKIP =
-    ".ytp-skip-ad-button,.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-ad-skip-button-container button,.ytp-skip-ad-button-container button";
+    '.ytp-skip-ad-button,.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-ad-skip-button-slot button,.ytp-ad-skip-button-container button,.ytp-skip-ad-button-container button,[id^="skip-button"].ytp-skip-ad-button,[id^="skip-button"] button';
+  const AD_UI = ".video-ads,.ytp-ad-module,.ytp-ad-player-overlay";
+  const SKIP_WORD =
+    /^(skip|skip ad|skip ads|skip this ad|omitir|omitir anuncio|saltar anuncio|überspringen|anzeige überspringen|ignorer|passer l’annonce|pular anúncio|salta annuncio|atla|تخطي|跳过|スキップ|건너뛰기)$/iu;
   const RATE = 16;
   const MEDIA_EVENTS = ["loadstart", "emptied", "loadedmetadata", "playing"];
   const INPUT_EVENTS = ["pointerdown", "click", "input", "change"];
@@ -50,6 +53,11 @@
       video.removeEventListener("volumechange", snapshot.onVolume);
       try {
         if (
+          snapshot.defaultRateOwned &&
+          video.defaultPlaybackRate !== snapshot.defaultRate
+        )
+          video.defaultPlaybackRate = snapshot.defaultRate;
+        if (
           snapshot.rateOwned &&
           !snapshot.rateManual &&
           video.playbackRate !== snapshot.rate
@@ -69,7 +77,6 @@
       for (const [video, snapshot] of state.modified) restore(video, snapshot);
       if (count && state.helped) void api.metric("ads_skipped");
       state.modified.clear();
-      state.clicked = new WeakMap();
       state.active = false;
       state.helped = false;
       state.userRateUntil = -1;
@@ -135,7 +142,6 @@
               state.userMuteUntil = -1;
             }
           }
-          state.clicked = new WeakMap();
           state.started = performance.now();
           state.timedOut = false;
         }
@@ -156,7 +162,6 @@
           snapshot.failures = 0;
           snapshot.rateManual = false;
           snapshot.muteManual = false;
-          state.clicked = new WeakMap();
           state.started = performance.now();
         }
         snapshot.source = video.currentSrc;
@@ -165,8 +170,10 @@
       if (!snapshot) {
         snapshot = {
           rate: video.playbackRate,
+          defaultRate: video.defaultPlaybackRate,
           muted: video.muted,
           rateOwned: false,
+          defaultRateOwned: false,
           muteOwned: false,
           onRate: null,
           onVolume: null,
@@ -203,23 +210,23 @@
         video.addEventListener("volumechange", snapshot.onVolume);
       }
       const now = performance.now();
-      if (
-        snapshot.observedRate === RATE &&
-        video.playbackRate !== RATE &&
-        !snapshot.rateManual
-      ) {
-        state.clicked = new WeakMap();
-      }
       snapshot.observedRate = video.playbackRate;
       if (
         !snapshot.rateManual &&
-        video.playbackRate !== RATE &&
+        (video.playbackRate !== RATE || video.defaultPlaybackRate !== RATE) &&
         now >= snapshot.nextRateAttempt
       ) {
         snapshot.nextRateAttempt = now + 250;
         try {
+          if (video.defaultPlaybackRate !== RATE) {
+            video.defaultPlaybackRate = RATE;
+            snapshot.defaultRateOwned = video.defaultPlaybackRate === RATE;
+          }
           video.playbackRate = RATE;
-          if (video.playbackRate !== RATE)
+          if (
+            video.playbackRate !== RATE ||
+            video.defaultPlaybackRate !== RATE
+          )
             throw Error("Playback rate rejected");
           snapshot.rateOwned = true;
           snapshot.failures = 0;
@@ -239,7 +246,60 @@
         state.helped = true;
       } catch {}
     }
+    function controls(player, state) {
+      for (const element of player.querySelectorAll(SKIP)) {
+        const button = element.matches('button,[role="button"]')
+          ? element
+          : element.querySelector('button,[role="button"]') ||
+            element.closest('button,[role="button"]') ||
+            element;
+        if (owner(button) === player && state.buttons.size < 24)
+          state.buttons.add(button);
+      }
+      for (const button of player.querySelectorAll(
+        `${AD_UI} button,${AD_UI} [role="button"]`,
+      )) {
+        const label = (
+          button.getAttribute("aria-label") ||
+          button.getAttribute("title") ||
+          button.textContent ||
+          ""
+        )
+          .replace(/\s+/g, " ")
+          .trim();
+        if (SKIP_WORD.test(label) && state.buttons.size < 24)
+          state.buttons.add(button);
+      }
+    }
+    function activate(button) {
+      try {
+        button.focus({ preventScroll: true });
+      } catch {}
+      const events = ["pointerdown", "mousedown", "pointerup", "mouseup"];
+      for (const type of events) {
+        try {
+          const EventType = type.startsWith("pointer")
+            ? globalThis.PointerEvent
+            : MouseEvent;
+          if (!EventType) continue;
+          button.dispatchEvent(
+            new EventType(type, {
+              bubbles: true,
+              cancelable: true,
+              composed: true,
+              button: 0,
+              buttons: type.endsWith("down") ? 1 : 0,
+              pointerId: 1,
+              pointerType: "mouse",
+              isPrimary: true,
+            }),
+          );
+        } catch {}
+      }
+      button.click();
+    }
     function skip(player, state) {
+      controls(player, state);
       for (const button of state.buttons) {
         if (!button.isConnected || owner(button) !== player) {
           state.buttons.delete(button);
@@ -250,7 +310,6 @@
           button.getAttribute("aria-disabled") === "true" ||
           button.closest('[hidden],[inert],[aria-hidden="true"]')
         ) {
-          state.clicked.delete(button);
           continue;
         }
         const rect = button.getBoundingClientRect(),
@@ -267,21 +326,13 @@
               checkVisibilityCSS: true,
             }))
         ) {
-          state.clicked.delete(button);
           continue;
         }
-        const attempt = state.clicked.get(button),
-          now = performance.now();
+        const now = performance.now();
         if (now < state.nextSkipAttempt) continue;
-        if (attempt && (attempt.count >= 3 || now - attempt.at < 1000))
-          continue;
-        state.clicked.set(button, {
-          at: now,
-          count: (attempt?.count || 0) + 1,
-        });
-        state.nextSkipAttempt = now + 100;
+        state.nextSkipAttempt = now + 400;
         try {
-          button.click();
+          activate(button);
           state.helped = true;
         } catch {}
         break;
@@ -344,7 +395,6 @@
         mediaListeners: new Map(),
         buttons: new Set(),
         modified: new Map(),
-        clicked: new WeakMap(),
         active: false,
         helped: false,
         timedOut: false,
