@@ -257,7 +257,7 @@
           state.buttons.add(button);
       }
       for (const button of player.querySelectorAll(
-        `${AD_UI} button,${AD_UI} [role="button"]`,
+        `:is(${AD_UI}) :is(button,[role="button"])`,
       )) {
         const label = (
           button.getAttribute("aria-label") ||
