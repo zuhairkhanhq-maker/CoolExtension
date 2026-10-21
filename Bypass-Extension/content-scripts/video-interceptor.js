@@ -10,7 +10,7 @@
   const SKIP =
     '.ytp-skip-ad-button,.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-ad-skip-button-slot button,.ytp-ad-skip-button-container button,.ytp-skip-ad-button-container button,[id^="skip-button"].ytp-skip-ad-button,[id^="skip-button"] button';
   const POSSIBLE_SKIP =
-    'button,[role="button"],[tabindex="0"],[aria-label],[title],[class*="skip" i],[id*="skip" i]';
+    'button,[role="button"],[tabindex="0"],[aria-label],[title]';
   const SKIP_WORD =
     /^(skip|skip ad|skip ads|skip this ad|omitir|omitir anuncio|saltar anuncio|überspringen|anzeige überspringen|ignorer|passer l’annonce|pular anúncio|salta annuncio|atla|تخطي|跳过|スキップ|건너뛰기)$/iu;
   const RATE = 16;

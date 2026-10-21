@@ -932,10 +932,10 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
     );
     await waitFor(p, () => window.clicks === 1);
     await p.waitForTimeout(200);
-    assert.equal(await p.evaluate(() => window.clicks), 1);
-    await waitFor(p, () => window.clicks >= 5);
+    assert.equal(await p.evaluate(() => window.clicks), 2);
+    await waitFor(p, () => window.clicks >= 6);
     const clicks = await p.evaluate(() => window.clicks);
-    assert.ok(clicks >= 5 && clicks <= 7);
+    assert.ok(clicks >= 6 && clicks <= 8);
     await p.close();
   });
   await test("YouTube finds an exact Skip control outside legacy ad containers", async () => {
