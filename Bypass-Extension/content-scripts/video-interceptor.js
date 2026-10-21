@@ -363,6 +363,24 @@
         } catch {}
       }, 80);
     }
+    function visible(element) {
+      const rect = element.getBoundingClientRect();
+      if (!rect.width || !rect.height) return false;
+      let node = element;
+      for (let depth = 0; node && depth < 32; depth++) {
+        if (node.matches("[hidden],[inert]")) return false;
+        const style = getComputedStyle(node);
+        if (
+          style.display === "none" ||
+          style.visibility === "hidden" ||
+          style.visibility === "collapse" ||
+          Number(style.opacity) === 0
+        )
+          return false;
+        node = api.composedParent(node);
+      }
+      return true;
+    }
     function skip(player, state) {
       controls(player, state);
       for (const button of state.buttons) {
@@ -373,18 +391,7 @@
         if (
           button.matches(":disabled") ||
           button.getAttribute("aria-disabled") === "true" ||
-          button.closest("[hidden],[inert]")
-        ) {
-          continue;
-        }
-        const rect = button.getBoundingClientRect(),
-          style = getComputedStyle(button);
-        if (
-          !rect.width ||
-          !rect.height ||
-          style.visibility !== "visible" ||
-          style.display === "none" ||
-          Number(style.opacity) === 0
+          !visible(button)
         ) {
           continue;
         }
