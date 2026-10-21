@@ -1768,7 +1768,10 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
     const manifest = JSON.parse(
       fs.readFileSync(path.join(ROOT, "manifest.json"), "utf8"),
     );
-    assert.equal(manifest.version, "0.7.0");
+    const packageVersion = JSON.parse(
+      fs.readFileSync(path.join(ROOT, "../package.json"), "utf8"),
+    ).version;
+    assert.equal(manifest.version, packageVersion);
     assert.equal(manifest.content_scripts[0].run_at, "document_start");
     assert.deepEqual(manifest.content_scripts[0].js, [
       "core/autopilot-model.js",
