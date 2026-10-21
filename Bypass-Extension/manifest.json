@@ -3,7 +3,7 @@
   "name": "Bypass - Elite Web Optimizer",
   "version": "0.9.1",
   "version_name": "0.9.1 Free",
-  "description": "Free local website cleanup, YouTube ad assistance and optional streaming intro skipping. Simple site controls. No account. No tracking.",
+  "description": "Free local website cleanup, YouTube ad assistance and supported streaming controls. Simple site settings. No tracking.",
   "permissions": [
     "storage",
     "activeTab"
