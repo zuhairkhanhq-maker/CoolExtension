@@ -940,12 +940,14 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
   });
   await test("YouTube finds an exact Skip control outside legacy ad containers", async () => {
     const p = await fixture(
-      '<div class="html5-video-player ad-showing"><video></video><div class="yt-new-control"><button><span>Skip</span><span aria-hidden="true">▶</span></button></div></div>',
+      '<div class="html5-video-player ad-showing"><video></video></div><div class="yt-new-control" aria-hidden="true" style="position:absolute;left:240px;top:100px"><button aria-label="Skip"><span>Skip</span><span aria-hidden="true">▶</span></button></div>',
       "www.youtube.com",
       videoSetup +
-        `document.addEventListener('DOMContentLoaded',()=>{const button=document.querySelector('.yt-new-control button');button.addEventListener('click',event=>{if(event.detail===1&&event.clientX>0){window.coordinateSkip=true;button.closest('.html5-video-player').classList.remove('ad-showing')}});});`,
+        `document.addEventListener('DOMContentLoaded',()=>{const button=document.querySelector('.yt-new-control button');button.addEventListener('click',event=>{window.coordinateSkip={detail:event.detail,x:event.clientX};document.querySelector('.html5-video-player').classList.remove('ad-showing')});});`,
     );
-    await waitFor(p, () => window.coordinateSkip === true);
+    await waitFor(p, () => !!window.coordinateSkip);
+    assert.equal(await p.evaluate(() => window.coordinateSkip.detail), 1);
+    assert.ok((await p.evaluate(() => window.coordinateSkip.x)) > 0);
     await waitFor(
       p,
       () =>

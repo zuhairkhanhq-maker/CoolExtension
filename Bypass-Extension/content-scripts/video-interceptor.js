@@ -277,7 +277,7 @@
       const now = performance.now();
       if (now < state.nextControlScan) return;
       state.nextControlScan = now + 200;
-      for (const element of player.querySelectorAll(POSSIBLE_SKIP)) {
+      for (const element of document.querySelectorAll(POSSIBLE_SKIP)) {
         const label = (
           element.getAttribute("aria-label") ||
           element.getAttribute("title") ||
@@ -292,7 +292,22 @@
         const button = element.matches('button,[role="button"]')
           ? element
           : element.closest('button,[role="button"]') || element;
-        if (owner(button) === player) state.buttons.add(button);
+        const linkedPlayer = owner(button);
+        if (linkedPlayer && linkedPlayer !== player) continue;
+        if (!linkedPlayer) {
+          const controlRect = button.getBoundingClientRect();
+          const playerRect = player.getBoundingClientRect();
+          const x = controlRect.left + controlRect.width / 2;
+          const y = controlRect.top + controlRect.height / 2;
+          if (
+            x < playerRect.left ||
+            x > playerRect.right ||
+            y < playerRect.top ||
+            y > playerRect.bottom
+          )
+            continue;
+        }
+        state.buttons.add(button);
       }
     }
     function activate(button, player) {
@@ -341,7 +356,7 @@
         button.dispatchEvent(new MouseEvent("click", options));
       } catch {}
       setTimeout(() => {
-        if (!alive || !button.isConnected || owner(button) !== player) return;
+        if (!alive || !button.isConnected) return;
         if (!ad(player)) return;
         try {
           button.click();
@@ -351,14 +366,14 @@
     function skip(player, state) {
       controls(player, state);
       for (const button of state.buttons) {
-        if (!button.isConnected || owner(button) !== player) {
+        if (!button.isConnected) {
           state.buttons.delete(button);
           continue;
         }
         if (
           button.matches(":disabled") ||
           button.getAttribute("aria-disabled") === "true" ||
-          button.closest('[hidden],[inert],[aria-hidden="true"]')
+          button.closest("[hidden],[inert]")
         ) {
           continue;
         }
@@ -369,12 +384,7 @@
           !rect.height ||
           style.visibility !== "visible" ||
           style.display === "none" ||
-          Number(style.opacity) === 0 ||
-          (typeof button.checkVisibility === "function" &&
-            !button.checkVisibility({
-              checkOpacity: true,
-              checkVisibilityCSS: true,
-            }))
+          Number(style.opacity) === 0
         ) {
           continue;
         }
