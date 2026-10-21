@@ -310,7 +310,39 @@
         state.buttons.add(button);
       }
     }
-    function activate(button, player) {
+    function endSkippableAd(button, player, state) {
+      if (
+        !alive ||
+        !button.isConnected ||
+        !ad(player) ||
+        !visible(button) ||
+        !button.matches(
+          ".ytp-skip-ad-button,.ytp-ad-skip-button,.ytp-ad-skip-button-modern",
+        )
+      )
+        return false;
+      const label = (
+        button.getAttribute("aria-label") ||
+        button.getAttribute("title") ||
+        button.textContent ||
+        ""
+      )
+        .replace(/\s+/g, " ")
+        .trim();
+      if (!SKIP_WORD.test(label)) return false;
+      for (const video of state.videos) {
+        if (!video.isConnected || owner(video) !== player) continue;
+        const duration = video.duration;
+        if (!Number.isFinite(duration) || duration <= 0) continue;
+        try {
+          video.currentTime = Math.max(0, duration - 0.05);
+          state.helped = true;
+          return true;
+        } catch {}
+      }
+      return false;
+    }
+    function activate(button, player, state) {
       try {
         button.focus({ preventScroll: true });
       } catch {}
@@ -362,6 +394,10 @@
           button.click();
         } catch {}
       }, 80);
+      setTimeout(() => {
+        if (!alive || !button.isConnected || !ad(player)) return;
+        endSkippableAd(button, player, state);
+      }, 160);
     }
     function visible(element) {
       const rect = element.getBoundingClientRect();
@@ -399,7 +435,7 @@
         if (now < state.nextSkipAttempt) continue;
         state.nextSkipAttempt = now + 400;
         try {
-          activate(button, player);
+          activate(button, player, state);
           state.helped = true;
         } catch {}
         break;

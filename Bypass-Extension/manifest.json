@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Bypass - Elite Web Optimizer",
-  "version": "0.9.3",
-  "version_name": "0.9.3 Free",
+  "version": "0.9.4",
+  "version_name": "0.9.4 Free",
   "description": "Free local website cleanup, YouTube ad assistance and supported streaming controls. Simple site settings. No tracking.",
   "permissions": [
     "storage",

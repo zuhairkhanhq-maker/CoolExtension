@@ -488,6 +488,26 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
     assert.equal(await p.evaluate(() => window.clicks), 1);
     await p.close();
   });
+  await test("YouTube ends only the active ad when a real Skip button rejects synthetic clicks", async () => {
+    const extra =
+      videoSetup +
+      `document.addEventListener('DOMContentLoaded',()=>{const video=document.querySelector('video');let current=0;Object.defineProperties(video,{duration:{get:()=>10,configurable:true},currentTime:{get:()=>current,set:value=>{current=value;if(value>=9.9){window.adEnded=(window.adEnded||0)+1;document.querySelector('.html5-video-player').classList.remove('ad-showing');}},configurable:true}});});`;
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video><button class="ytp-skip-ad-button" onclick="window.rejectedClicks=(window.rejectedClicks||0)+1">Skip</button></div>',
+      "www.youtube.com",
+      extra,
+    );
+    await waitFor(p, () => window.rejectedClicks >= 1);
+    await waitFor(p, () => window.adEnded === 1);
+    assert.equal(
+      await p.locator(".html5-video-player").evaluate((player) =>
+        player.classList.contains("ad-showing"),
+      ),
+      false,
+    );
+    assert.equal(p.errors.length, 0);
+    await p.close();
+  });
   await test("Unknown video platform untouched", async () => {
     const p = await fixture(
       '<div class="html5-video-player ad-showing"><video></video></div>',
