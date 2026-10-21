@@ -17,8 +17,28 @@ async function test(name, fn) {
     results.push({ name, pass: true });
     console.log("PASS", name);
   } catch (error) {
-    results.push({ name, pass: false, error: error.stack });
+    const diagnostics = await Promise.all(
+      (context?.pages() || []).map(async (page) => {
+        try {
+          return await page.evaluate(() => ({
+            url: location.href,
+            ad: document.querySelector(".html5-video-player")?.className,
+            videos: [...document.querySelectorAll("video")].map((video) => ({
+              rate: video.playbackRate,
+              defaultRate: video.defaultPlaybackRate,
+              muted: video.muted,
+              paused: video.paused,
+              ready: video.readyState,
+            })),
+          }));
+        } catch {
+          return { url: page.url() };
+        }
+      }),
+    );
+    results.push({ name, pass: false, error: error.stack, diagnostics });
     console.error("FAIL", name, error.message);
+    console.error(JSON.stringify(diagnostics));
   }
 }
 async function launch() {
@@ -65,7 +85,7 @@ async function popup(worker, id) {
   let worker = started.worker;
   const id = new URL(worker.url()).host;
   const media = fs.readFileSync(path.join(__dirname, "fixtures/player.webm"));
-  const html = `<!doctype html><html><head><title>YouTube fixture</title><style>body{min-height:1200px}video{width:320px;height:180px}#onetrust-banner-sdk{padding:20px}button{padding:10px}</style></head><body><main><h1>Video page</h1><div class="html5-video-player ad-showing"><video></video><button class="ytp-skip-ad-button" hidden disabled onclick="window.skips=(window.skips||0)+1;this.parentElement.classList.remove('ad-showing')">Skip Ad</button></div><form><input id="email"></form></main><div id="onetrust-banner-sdk"><p>We use cookies</p><button id="onetrust-reject-all-handler" onclick="window.rejects=(window.rejects||0)+1">Reject all</button></div><script>window.prepare=video=>{video.autoplay=true;video.loop=true;video.playbackRate=1.5;video.src='/player.webm';};prepare(document.querySelector('video'));</script></body></html>`;
+  const html = `<!doctype html><html><head><title>YouTube fixture</title><style>body{min-height:1200px}video{width:320px;height:180px}#onetrust-banner-sdk{padding:20px}button{padding:10px}</style></head><body><main><h1>Video page</h1><div class="html5-video-player ad-showing"><video></video><button class="ytp-skip-ad-button" hidden disabled onclick="window.skips=(window.skips||0)+1;this.parentElement.classList.remove('ad-showing')">Skip Ad</button></div><form><input id="email"></form></main><div id="onetrust-banner-sdk"><p>We use cookies</p><button id="onetrust-reject-all-handler" onclick="window.rejects=(window.rejects||0)+1">Reject all</button></div><script>window.prepare=video=>{video.autoplay=true;video.loop=true;video.defaultPlaybackRate=1.5;video.playbackRate=1.5;video.src='/player.webm';};prepare(document.querySelector('video'));</script></body></html>`;
   await context.route("https://www.youtube.com/**", (route) =>
     route.fulfill({ contentType: "text/html", body: html }),
   );

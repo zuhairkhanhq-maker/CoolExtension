@@ -430,6 +430,35 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
     );
     await p.close();
   });
+  await test("YouTube global keyboard speed and mute choices are respected during ads", async () => {
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video></div>',
+      "www.youtube.com",
+      videoSetup +
+        `document.addEventListener('keydown',event=>{if(event.key==='>')document.querySelector('video').playbackRate=2;if(event.key==='m')document.querySelector('video').muted=false;});`,
+    );
+    await waitFor(p, () => document.querySelector("video").playbackRate === 16);
+    await p.keyboard.press("Shift+Period");
+    await p.keyboard.press("m");
+    await p.waitForTimeout(400);
+    assert.equal(
+      await p.locator("video").evaluate((video) => video.playbackRate),
+      2,
+    );
+    assert.equal(
+      await p.locator("video").evaluate((video) => video.muted),
+      false,
+    );
+    await p
+      .locator(".html5-video-player")
+      .evaluate((player) => player.classList.remove("ad-showing"));
+    await p.waitForTimeout(150);
+    assert.equal(
+      await p.locator("video").evaluate((video) => video.playbackRate),
+      2,
+    );
+    await p.close();
+  });
   await test("Disabling video assistance restores playback immediately", async () => {
     const p = await fixture(
       '<div class="html5-video-player ad-showing"><video></video></div>',

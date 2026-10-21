@@ -11,11 +11,23 @@
     ".ytp-skip-ad-button,.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-ad-skip-button-container button,.ytp-skip-ad-button-container button";
   const RATE = 16;
   const MEDIA_EVENTS = ["loadstart", "emptied", "loadedmetadata", "playing"];
-  const INPUT_EVENTS = ["pointerdown", "click", "keydown", "input", "change"];
+  const INPUT_EVENTS = ["pointerdown", "click", "input", "change"];
   api.register("video", () => {
     const players = new Map();
     let alive = true,
       tick = 0;
+    function onKey(event) {
+      const target = event
+        .composedPath()
+        .find((node) => node instanceof Element);
+      if (
+        !event.isTrusted ||
+        target?.closest('input,textarea,select,[contenteditable="true"]')
+      )
+        return;
+      for (const state of players.values()) state.onInput(event);
+    }
+    document.addEventListener("keydown", onKey, true);
     function owner(element) {
       let node = element;
       for (
@@ -394,6 +406,7 @@
     });
     return () => {
       alive = false;
+      document.removeEventListener("keydown", onKey, true);
       clearTimeout(tick);
       unsubscribe();
       unmaintain();
