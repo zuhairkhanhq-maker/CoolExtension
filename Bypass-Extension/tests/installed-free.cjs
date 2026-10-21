@@ -213,6 +213,9 @@ async function popup(worker, id) {
         document.querySelector("video").defaultPlaybackRate === 1.5 &&
         !document.querySelector("video").muted,
     );
+    await page.locator(".ytp-ad-skip-button-slot").evaluate((slot) =>
+      slot.remove(),
+    );
   });
   await test("Popup switch disables and re-enables the actual installed video engine", async () => {
     await page.locator(".ytp-skip-ad-button").evaluate((button) => {

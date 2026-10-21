@@ -143,16 +143,13 @@
       });
       const listener = (event) => {
         if (!alive || owner(video) !== player) return;
-        if (
-          (event.type === "ratechange" || event.type === "volumechange") &&
-          !ad(player) &&
-          !state.modified.has(video)
-        ) {
-          state.preferences.set(video, {
-            rate: video.playbackRate,
-            defaultRate: video.defaultPlaybackRate,
-            muted: video.muted,
-          });
+        if (event.type === "ratechange" || event.type === "volumechange") {
+          if (!ad(player) && !state.modified.has(video))
+            state.preferences.set(video, {
+              rate: video.playbackRate,
+              defaultRate: video.defaultPlaybackRate,
+              muted: video.muted,
+            });
           return;
         }
         const snapshot = state.modified.get(video);
