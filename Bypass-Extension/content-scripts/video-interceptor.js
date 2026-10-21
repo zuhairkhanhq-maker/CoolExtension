@@ -60,6 +60,8 @@
       state.clicked = new WeakMap();
       state.active = false;
       state.helped = false;
+      state.userRateUntil = -1;
+      state.userMuteUntil = -1;
       report();
     }
     function report() {
@@ -117,6 +119,8 @@
             if (event.type === "loadstart" || event.type === "emptied") {
               snapshot.rateManual = false;
               snapshot.muteManual = false;
+              state.userRateUntil = -1;
+              state.userMuteUntil = -1;
             }
           }
           state.clicked = new WeakMap();
@@ -173,7 +177,10 @@
           }
         };
         snapshot.onVolume = () => {
-          if (performance.now() <= state.userMuteUntil) {
+          if (
+            performance.now() <= state.userMuteUntil &&
+            (snapshot.muteManual || !video.muted)
+          ) {
             snapshot.muted = video.muted;
             snapshot.muteManual = true;
             snapshot.muteOwned = false;

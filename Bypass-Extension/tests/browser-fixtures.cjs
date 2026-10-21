@@ -396,6 +396,40 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
     assert.equal(await p.locator("video").evaluate((v) => v.muted), false);
     await p.close();
   });
+  await test("YouTube next-ad mute does not overwrite the original sound preference after a user click", async () => {
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video><button class="ytp-mute-button" onclick="document.querySelector(\'video\').muted=false">Unmute</button></div>',
+      "www.youtube.com",
+      videoSetup,
+    );
+    await waitFor(p, () => document.querySelector("video").playbackRate === 16);
+    await p.locator(".ytp-mute-button").click();
+    await p.waitForTimeout(50);
+    assert.equal(
+      await p.locator("video").evaluate((video) => video.muted),
+      false,
+    );
+    await p.locator("video").evaluate((video) => {
+      video.playbackRate = 1;
+      video.dispatchEvent(new Event("loadstart"));
+    });
+    await waitFor(
+      p,
+      () =>
+        document.querySelector("video").playbackRate === 16 &&
+        document.querySelector("video").muted,
+    );
+    await p
+      .locator(".html5-video-player")
+      .evaluate((player) => player.classList.remove("ad-showing"));
+    await waitFor(
+      p,
+      () =>
+        document.querySelector("video").playbackRate === 1.5 &&
+        !document.querySelector("video").muted,
+    );
+    await p.close();
+  });
   await test("Disabling video assistance restores playback immediately", async () => {
     const p = await fixture(
       '<div class="html5-video-player ad-showing"><video></video></div>',
