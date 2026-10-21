@@ -1,12 +1,17 @@
 {
   "name": "bypass-extension-qa",
-  "version": "0.7.0",
+  "version": "0.9.0",
   "private": true,
   "scripts": {
-    "test:unit": "node Bypass-Extension/tests/pro-worker.cjs",
+    "test:unit": "node Bypass-Extension/tests/autopilot-worker.cjs",
     "test:free": "node Bypass-Extension/tests/browser-fixtures.cjs",
     "test:popup": "node Bypass-Extension/tests/popup-quality.cjs",
-    "test:pro": "node Bypass-Extension/tests/pro-alpha.cjs"
+    "test:autopilot": "node Bypass-Extension/tests/autopilot-flow.cjs",
+    "test:package": "node --test Bypass-Extension/tests/package.test.cjs",
+    "build": "node scripts/build.cjs"
   },
-  "devDependencies": { "playwright": "1.62.1", "axe-core": "4.10.3" }
+  "devDependencies": {
+    "playwright": "1.62.1",
+    "axe-core": "4.10.3"
+  }
 }

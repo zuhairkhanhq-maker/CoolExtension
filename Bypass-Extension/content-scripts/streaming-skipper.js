@@ -1,5 +1,5 @@
 (() => {
-  'use strict';
+  "use strict";
   const site = globalThis.BypassStreaming?.site(location.hostname);
   if (!site || !globalThis.Bypass) return;
   const BUTTON = 'button, [role="button"]';
@@ -14,17 +14,21 @@
 
   const sessions = new WeakMap();
   function kind(button) {
-    if (site.intro && button.matches(site.intro)) return 'skipIntro';
-    if (site.recap && button.matches(site.recap)) return 'skipRecap';
+    if (site.intro && button.matches(site.intro)) return "skipIntro";
+    if (site.recap && button.matches(site.recap)) return "skipRecap";
 
-    if (site.id === 'netflix' && site.next && button.matches(site.next)) return 'autoNext';
-    const raw = button.getAttribute('aria-label') || button.textContent || '';
+    if (site.id === "netflix" && site.next && button.matches(site.next))
+      return "autoNext";
+    const raw = button.getAttribute("aria-label") || button.textContent || "";
     if (raw.length > 100) return null;
-    const text = raw.replace(/\s+/g, ' ').trim();
+    const text = raw.replace(/\s+/g, " ").trim();
     return Object.keys(labels).find((k) => labels[k].test(text)) || null;
   }
   function visible(element) {
-    if (!element.isConnected || element.closest('[hidden], [inert], [aria-hidden="true"]'))
+    if (
+      !element.isConnected ||
+      element.closest('[hidden], [inert], [aria-hidden="true"]')
+    )
       return false;
     if (
       element.checkVisibility &&
@@ -41,7 +45,7 @@
       r.left < innerWidth
     );
   }
-  Bypass.register('streaming', (settings) => {
+  Bypass.register("streaming", (settings) => {
     let stopped = false,
       timer = 0,
       lastTick = -Infinity;
@@ -64,7 +68,8 @@
       return value;
     }
     function tick() {
-      if (stopped || document.hidden || performance.now() - lastTick < 250) return;
+      if (stopped || document.hidden || performance.now() - lastTick < 250)
+        return;
       lastTick = performance.now();
       for (const button of candidates) {
         if (!button.isConnected) candidates.delete(button);
@@ -78,12 +83,13 @@
         lastTick = -Infinity;
         tick();
       };
-      for (const event of ['timeupdate', 'playing', 'ended']) video.addEventListener(event, tick);
-      video.addEventListener('loadedmetadata', metadata);
+      for (const event of ["timeupdate", "playing", "ended"])
+        video.addEventListener(event, tick);
+      video.addEventListener("loadedmetadata", metadata);
       videos.set(video, () => {
-        for (const event of ['timeupdate', 'playing', 'ended'])
+        for (const event of ["timeupdate", "playing", "ended"])
           video.removeEventListener(event, tick);
-        video.removeEventListener('loadedmetadata', metadata);
+        video.removeEventListener("loadedmetadata", metadata);
       });
     }
     function check(button) {
@@ -97,10 +103,15 @@
         !visible(button)
       )
         return;
-      if (button instanceof HTMLButtonElement && button.form && button.type === 'submit') return;
+      if (
+        button instanceof HTMLButtonElement &&
+        button.form &&
+        button.type === "submit"
+      )
+        return;
       const player = button.closest(site.player);
       if (!player || !players.has(player)) return;
-      const media = player.querySelectorAll('video');
+      const media = player.querySelectorAll("video");
 
       if (media.length !== 1) return;
       const video = media[0];
@@ -110,36 +121,55 @@
         video.seeking ||
         !Number.isFinite(video.duration) ||
         video.duration < 120 ||
-        (video.paused && !(action === 'autoNext' && video.ended))
+        (video.paused && !(action === "autoNext" && video.ended))
       )
         return;
-      if (action === 'autoNext') {
+      if (action === "autoNext") {
         if (!video.ended && video.duration - video.currentTime > 15) return;
         const exact = site.next && button.matches(site.next);
         if (
           !exact &&
-          !button.closest('[data-testid="up-next"], .up-next, .upnext, .atvwebplayersdk-nextupcard')
+          !button.closest(
+            '[data-testid="up-next"], .up-next, .upnext, .atvwebplayersdk-nextupcard',
+          )
         )
           return;
       }
       let focus = document.activeElement;
-      for (let depth = 0; focus?.shadowRoot?.activeElement && depth < 32; depth++)
+      for (
+        let depth = 0;
+        focus?.shadowRoot?.activeElement && depth < 32;
+        depth++
+      )
         focus = focus.shadowRoot.activeElement;
-      if (focus?.matches('input, textarea, select, [role="textbox"]') || focus?.isContentEditable)
+      if (
+        focus?.matches('input, textarea, select, [role="textbox"]') ||
+        focus?.isContentEditable
+      )
         return;
       const rect = button.getBoundingClientRect();
-      const x = Math.max(0, Math.min(innerWidth - 1, rect.left + rect.width / 2));
-      const y = Math.max(0, Math.min(innerHeight - 1, rect.top + rect.height / 2));
+      const x = Math.max(
+        0,
+        Math.min(innerWidth - 1, rect.left + rect.width / 2),
+      );
+      const y = Math.max(
+        0,
+        Math.min(innerHeight - 1, rect.top + rect.height / 2),
+      );
       const hit = button.getRootNode().elementFromPoint?.(x, y);
       if (!hit || (hit !== button && !button.contains(hit))) return;
       const state = session(video);
-      if (state.fired.has(action) || performance.now() - state.lastAction < 1500) return;
+      if (
+        state.fired.has(action) ||
+        performance.now() - state.lastAction < 1500
+      )
+        return;
 
       state.fired.add(action);
       state.lastAction = performance.now();
       try {
         button.click();
-        void Bypass.metric('streaming_clicks');
+        void Bypass.metric("streaming_clicks");
       } catch {}
     }
     function flush() {
@@ -158,11 +188,17 @@
     }
     function discover(element) {
       if (stopped) return;
-      if (element.matches(site.player) && !players.has(element) && players.size < 4) {
+      if (
+        element.matches(site.player) &&
+        !players.has(element) &&
+        players.size < 4
+      ) {
         const observer = new MutationObserver((records) => {
           for (const record of records.slice(0, 128)) {
             const target =
-              record.target.nodeType === 1 ? record.target : record.target.parentElement;
+              record.target.nodeType === 1
+                ? record.target
+                : record.target.parentElement;
             const button = target?.closest(BUTTON);
             if (button) discover(button);
           }
@@ -173,20 +209,26 @@
           characterData: true,
           attributes: true,
           attributeFilter: [
-            'aria-label',
-            'aria-disabled',
-            'disabled',
-            'data-uia',
-            'data-testid',
-            'hidden',
-            'style',
-            'class',
+            "aria-label",
+            "aria-disabled",
+            "disabled",
+            "data-uia",
+            "data-testid",
+            "hidden",
+            "style",
+            "class",
           ],
         });
         players.set(element, observer);
       }
-      if (element.matches('video') && element.closest(site.player)) attachVideo(element);
-      if (!element.matches(BUTTON) || !element.closest(site.player) || !kind(element)) return;
+      if (element.matches("video") && element.closest(site.player))
+        attachVideo(element);
+      if (
+        !element.matches(BUTTON) ||
+        !element.closest(site.player) ||
+        !kind(element)
+      )
+        return;
       if (candidates.size >= 64) prune();
       if (candidates.size < 64 || candidates.has(element)) {
         candidates.add(element);
@@ -205,31 +247,36 @@
           videos.delete(video);
         }
       for (const button of candidates)
-        if (!button.isConnected || !button.closest(site.player) || !kind(button)) {
+        if (
+          !button.isConnected ||
+          !button.closest(site.player) ||
+          !kind(button)
+        ) {
           candidates.delete(button);
           pending.delete(button);
         }
     }
     function manualClick(event) {
       if (!event.isTrusted) return;
-      const button = event.target instanceof Element ? event.target.closest(BUTTON) : null;
+      const button =
+        event.target instanceof Element ? event.target.closest(BUTTON) : null;
       const player = button?.closest(site.player),
         action = button && kind(button);
       if (!player || !action) return;
-      const media = player.querySelectorAll('video');
+      const media = player.querySelectorAll("video");
       if (media.length === 1) session(media[0]).fired.add(action);
     }
     const unsubscribe = Bypass.subscribe(discover);
     const unmaintain = Bypass.maintain(prune);
-    document.addEventListener('visibilitychange', tick);
-    document.addEventListener('click', manualClick, true);
+    document.addEventListener("visibilitychange", tick);
+    document.addEventListener("click", manualClick, true);
     return () => {
       stopped = true;
       clearTimeout(timer);
       unsubscribe();
       unmaintain();
-      document.removeEventListener('visibilitychange', tick);
-      document.removeEventListener('click', manualClick, true);
+      document.removeEventListener("visibilitychange", tick);
+      document.removeEventListener("click", manualClick, true);
       for (const observer of players.values()) observer.disconnect();
       for (const remove of videos.values()) remove();
       pending.clear();

@@ -1,5 +1,5 @@
 (() => {
-  'use strict';
+  "use strict";
   if (globalThis.Bypass) return;
   const siteKey = `site:${location.hostname}`;
   const defaults = Object.freeze({
@@ -15,7 +15,7 @@
   const listeners = new Set();
   const roots = new Map();
   const pending = new Map();
-  let streamingSignature = '',
+  let streamingSignature = "",
     settings = null,
     settingsRevision = 0,
     suspended = false,
@@ -34,7 +34,8 @@
   const maintenance = new Set();
   const diagnostics = { adActive: false, videoPlayers: 0 };
   chrome.runtime.onMessage?.addListener((message, sender, respond) => {
-    if (sender.id !== chrome.runtime.id || message?.type !== 'page-status') return;
+    if (sender.id !== chrome.runtime.id || message?.type !== "page-status")
+      return;
     respond({
       activity: { ...activity },
       settings,
@@ -61,9 +62,11 @@
     const bytes = crypto.getRandomValues(new Uint8Array(16));
     bytes[6] = (bytes[6] & 15) | 64;
     bytes[8] = (bytes[8] & 63) | 128;
-    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    const hex = Array.from(bytes, (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("");
     const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-    const message = { type: 'metric', key, id };
+    const message = { type: "metric", key, id };
     const result = await send(message);
     if (!result?.ok && !stopped) {
       setTimeout(() => {
@@ -96,13 +99,13 @@
       let added = 0;
       for (const record of records) {
         if (
-          record.type === 'attributes' &&
-          record.attributeName === 'style' &&
-          record.target.getAttribute('data-bypass-hidden') === '1' &&
-          record.target.style.getPropertyValue('display') === 'none'
+          record.type === "attributes" &&
+          record.attributeName === "style" &&
+          record.target.getAttribute("data-bypass-hidden") === "1" &&
+          record.target.style.getPropertyValue("display") === "none"
         )
           continue;
-        enqueue(record.target, record.type === 'attributes');
+        enqueue(record.target, record.type === "attributes");
         for (const node of record.addedNodes || []) {
           if (++added > 128) {
             enqueue(root);
@@ -116,7 +119,15 @@
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ['id', 'class', 'hidden', 'aria-hidden', 'inert', 'style', 'open'],
+      attributeFilter: [
+        "id",
+        "class",
+        "hidden",
+        "aria-hidden",
+        "inert",
+        "style",
+        "open",
+      ],
     });
     roots.set(root, observer);
   }
@@ -205,20 +216,25 @@
   }
   function reconcile() {
     const streamKeys = globalThis.BypassStreaming?.keys || [];
-    const signature = streamKeys.map((k) => !!settings?.[k]).join(',');
+    const signature = streamKeys.map((k) => !!settings?.[k]).join(",");
     for (const [name, factory] of engines) {
       const featureOn =
-        name === 'streaming'
+        name === "streaming"
           ? streamKeys.some((k) => settings?.[k])
-          : settings?.[name === 'distractions' ? 'cookies' : name];
-      const enabled = settings && !settings.paused && featureOn && !suspended && !stopped;
-      if (name === 'streaming' && active.has(name) && signature !== streamingSignature) {
+          : settings?.[name === "distractions" ? "cookies" : name];
+      const enabled =
+        settings && !settings.paused && featureOn && !suspended && !stopped;
+      if (
+        name === "streaming" &&
+        active.has(name) &&
+        signature !== streamingSignature
+      ) {
         try {
           active.get(name)();
         } catch {}
         active.delete(name);
       }
-      if (name === 'streaming') streamingSignature = signature;
+      if (name === "streaming") streamingSignature = signature;
       if (!enabled && active.has(name)) {
         try {
           active.get(name)();
@@ -235,8 +251,8 @@
     return Object.fromEntries(
       Object.keys(defaults).map((key) => [
         key,
-        typeof value?.[key] === 'boolean' ? value[key] : defaults[key],
-      ])
+        typeof value?.[key] === "boolean" ? value[key] : defaults[key],
+      ]),
     );
   }
   globalThis.Bypass = Object.freeze({
@@ -256,12 +272,14 @@
     composedParent(element) {
       return (
         element.parentElement ||
-        (element.getRootNode() instanceof ShadowRoot ? element.getRootNode().host : null)
+        (element.getRootNode() instanceof ShadowRoot
+          ? element.getRootNode().host
+          : null)
       );
     },
   });
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes[siteKey]) {
+    if (area === "local" && changes[siteKey]) {
       settingsRevision++;
       settings = normalize(changes[siteKey].newValue);
       reconcile();
@@ -275,13 +293,13 @@
       reconcile();
     });
   } catch {}
-  addEventListener('pagehide', (event) => {
+  addEventListener("pagehide", (event) => {
     suspended = true;
     if (!event.persisted) stopped = true;
     reconcile();
     stopDiscovery();
   });
-  addEventListener('pageshow', (event) => {
+  addEventListener("pageshow", (event) => {
     if (event.persisted && !stopped) {
       suspended = false;
       reconcile();

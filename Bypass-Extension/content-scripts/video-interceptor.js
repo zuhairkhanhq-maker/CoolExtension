@@ -1,32 +1,43 @@
 (() => {
-  'use strict';
+  "use strict";
   const api = globalThis.Bypass;
-  if (!api || !/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(location.hostname)) return;
-  const PLAYER = '.html5-video-player';
-  const SKIP = '.ytp-skip-ad-button,.ytp-ad-skip-button,.ytp-ad-skip-button-modern';
+  if (
+    !api ||
+    !/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(location.hostname)
+  )
+    return;
+  const PLAYER = ".html5-video-player";
+  const SKIP =
+    ".ytp-skip-ad-button,.ytp-ad-skip-button,.ytp-ad-skip-button-modern";
   const RATE = 16;
-  const MEDIA_EVENTS = ['loadstart', 'emptied', 'loadedmetadata', 'playing'];
-  api.register('video', () => {
+  const MEDIA_EVENTS = ["loadstart", "emptied", "loadedmetadata", "playing"];
+  api.register("video", () => {
     const players = new Map();
     let alive = true,
       tick = 0;
     function owner(element) {
       let node = element;
-      for (let depth = 0; node && depth < 128; depth++, node = api.composedParent(node)) {
+      for (
+        let depth = 0;
+        node && depth < 128;
+        depth++, node = api.composedParent(node)
+      ) {
         if (node.matches(PLAYER)) return node;
       }
       return null;
     }
     function ad(player) {
       return (
-        player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting')
+        player.classList.contains("ad-showing") ||
+        player.classList.contains("ad-interrupting")
       );
     }
     function restore(video, snapshot) {
-      video.removeEventListener('ratechange', snapshot.onRate);
-      video.removeEventListener('volumechange', snapshot.onVolume);
+      video.removeEventListener("ratechange", snapshot.onRate);
+      video.removeEventListener("volumechange", snapshot.onVolume);
       try {
-        if (snapshot.rateOwned && video.playbackRate === RATE) video.playbackRate = snapshot.rate;
+        if (snapshot.rateOwned && video.playbackRate === RATE)
+          video.playbackRate = snapshot.rate;
       } catch {}
       try {
         if (snapshot.muteOwned && video.muted) video.muted = snapshot.muted;
@@ -34,7 +45,7 @@
     }
     function finish(state, count) {
       for (const [video, snapshot] of state.modified) restore(video, snapshot);
-      if (count && state.helped) void api.metric('ads_skipped');
+      if (count && state.helped) void api.metric("ads_skipped");
       state.modified.clear();
       state.clicked = new WeakMap();
       state.active = false;
@@ -58,7 +69,8 @@
             forgetVideo(video, state);
           }
         for (const button of state.buttons)
-          if (!button.isConnected || owner(button) !== player) state.buttons.delete(button);
+          if (!button.isConnected || owner(button) !== player)
+            state.buttons.delete(button);
       }
       report();
     }
@@ -74,7 +86,8 @@
       const snapshot = state.modified.get(video);
       if (snapshot) restore(video, snapshot);
       const listener = state.mediaListeners.get(video);
-      for (const event of MEDIA_EVENTS) video.removeEventListener(event, listener);
+      for (const event of MEDIA_EVENTS)
+        video.removeEventListener(event, listener);
       state.mediaListeners.delete(video);
       state.modified.delete(video);
       state.videos.delete(video);
@@ -85,7 +98,7 @@
       const listener = (event) => {
         if (!alive || owner(video) !== player) return;
         const snapshot = state.modified.get(video);
-        if (event.type !== 'playing') {
+        if (event.type !== "playing") {
           if (snapshot) {
             snapshot.pending = true;
             snapshot.loading = true;
@@ -103,11 +116,13 @@
       for (const event of MEDIA_EVENTS) video.addEventListener(event, listener);
     }
     function accelerate(video, state) {
-      if (video.paused || video.ended || video.readyState === 0)
-        return;
+      if (video.paused || video.ended || video.readyState === 0) return;
       let snapshot = state.modified.get(video);
       if (snapshot) {
-        if (video.currentSrc !== snapshot.source || video.currentTime < snapshot.time - 1) {
+        if (
+          video.currentSrc !== snapshot.source ||
+          video.currentTime < snapshot.time - 1
+        ) {
           snapshot.pending = true;
           state.clicked = new WeakMap();
           state.started = performance.now();
@@ -136,8 +151,8 @@
           if (!video.muted) snapshot.muteOwned = false;
         };
         state.modified.set(video, snapshot);
-        video.addEventListener('ratechange', snapshot.onRate);
-        video.addEventListener('volumechange', snapshot.onVolume);
+        video.addEventListener("ratechange", snapshot.onRate);
+        video.addEventListener("volumechange", snapshot.onVolume);
       }
       snapshot.pending = false;
       try {
@@ -162,8 +177,8 @@
           continue;
         }
         if (
-          button.matches(':disabled') ||
-          button.getAttribute('aria-disabled') === 'true' ||
+          button.matches(":disabled") ||
+          button.getAttribute("aria-disabled") === "true" ||
           button.closest('[hidden],[inert],[aria-hidden="true"]')
         ) {
           state.clicked.delete(button);
@@ -174,16 +189,21 @@
         if (
           !rect.width ||
           !rect.height ||
-          style.visibility !== 'visible' ||
-          style.display === 'none' ||
+          style.visibility !== "visible" ||
+          style.display === "none" ||
           Number(style.opacity) === 0
         ) {
           state.clicked.delete(button);
           continue;
         }
-        const attempt = state.clicked.get(button), now = performance.now();
-        if (attempt && (attempt.count >= 3 || now - attempt.at < 1000)) continue;
-        state.clicked.set(button, { at: now, count: (attempt?.count || 0) + 1 });
+        const attempt = state.clicked.get(button),
+          now = performance.now();
+        if (attempt && (attempt.count >= 3 || now - attempt.at < 1000))
+          continue;
+        state.clicked.set(button, {
+          at: now,
+          count: (attempt?.count || 0) + 1,
+        });
         try {
           button.click();
           state.helped = true;
@@ -225,7 +245,12 @@
       schedule();
     }
     function schedule() {
-      if (tick || !alive || ![...players.values()].some((state) => state.active)) return;
+      if (
+        tick ||
+        !alive ||
+        ![...players.values()].some((state) => state.active)
+      )
+        return;
       tick = setTimeout(() => {
         tick = 0;
         for (const [player, state] of players)
@@ -235,7 +260,8 @@
     }
     function register(player) {
       if (players.has(player)) return players.get(player);
-      for (const [old, state] of players) if (!old.isConnected) remove(old, state);
+      for (const [old, state] of players)
+        if (!old.isConnected) remove(old, state);
       if (players.size >= 8) return null;
       const state = {
         videos: new Set(),
@@ -250,7 +276,10 @@
         observer: null,
       };
       state.observer = new MutationObserver(() => check(player, state));
-      state.observer.observe(player, { attributes: true, attributeFilter: ['class'] });
+      state.observer.observe(player, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
       players.set(player, state);
       report();
       return state;

@@ -1,5 +1,5 @@
 (() => {
-  'use strict';
+  "use strict";
   const api = globalThis.Bypass;
   if (!api) return;
   const SELECTOR =
@@ -11,7 +11,7 @@
   const counted = new WeakSet(),
     touched = new WeakSet(),
     attempted = new WeakSet();
-  api.register('distractions', () => {
+  api.register("distractions", () => {
     const hidden = new Map(),
       queue = new Set(),
       timers = new Set();
@@ -26,11 +26,15 @@
       timers.add(id);
     };
     function visible(node) {
-      if (!node.isConnected || node.closest('[hidden],[inert],[aria-hidden="true"]')) return false;
+      if (
+        !node.isConnected ||
+        node.closest('[hidden],[inert],[aria-hidden="true"]')
+      )
+        return false;
       const style = getComputedStyle(node);
       return (
-        style.display !== 'none' &&
-        style.visibility === 'visible' &&
+        style.display !== "none" &&
+        style.visibility === "visible" &&
         Number(style.opacity) !== 0 &&
         node.getClientRects().length > 0
       );
@@ -44,53 +48,62 @@
           if (container) touched.add(container);
         }
     }
-    document.addEventListener('pointerdown', intent, true);
-    document.addEventListener('keydown', intent, true);
-    document.addEventListener('input', intent, true);
+    document.addEventListener("pointerdown", intent, true);
+    document.addEventListener("keydown", intent, true);
+    document.addEventListener("input", intent, true);
     function inspect(container) {
       const walker = document.createTreeWalker(
         container,
-        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT
+        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
       );
       let node,
         budget = 180,
-        text = '',
+        text = "",
         close = null,
         unsafe = false,
         hasInput = false;
       while ((node = walker.nextNode())) {
         if (--budget < 0 || text.length > 4096) return null;
         if (node.nodeType === 3) {
-          text += ' ' + node.textContent.slice(0, 512);
+          text += " " + node.textContent.slice(0, 512);
           continue;
         }
-        if (node.matches('input,form,[role="textbox"],[role="log"]')) hasInput = true;
+        if (node.matches('input,form,[role="textbox"],[role="log"]'))
+          hasInput = true;
         if (
           node.matches(
-            'iframe,object,embed,textarea,[contenteditable]:not([contenteditable="false"]),input[type="password"],input[autocomplete^="cc-"],input[type="date"],input[name*="birth" i],input[name*="age" i]'
+            'iframe,object,embed,textarea,[contenteditable]:not([contenteditable="false"]),input[type="password"],input[autocomplete^="cc-"],input[type="date"],input[name*="birth" i],input[name*="age" i]',
           ) ||
           node.shadowRoot
         )
           unsafe = true;
-        if (node.matches('input') && (node.value || node === node.getRootNode().activeElement))
+        if (
+          node.matches("input") &&
+          (node.value || node === node.getRootNode().activeElement)
+        )
           unsafe = true;
         if (
           !close &&
           node.matches('button,[role="button"]') &&
-          !node.matches(':disabled') &&
-          node.getAttribute('aria-disabled') !== 'true' &&
+          !node.matches(":disabled") &&
+          node.getAttribute("aria-disabled") !== "true" &&
           visible(node)
         ) {
-          if (node instanceof HTMLButtonElement && node.form && node.type === 'submit') continue;
+          if (
+            node instanceof HTMLButtonElement &&
+            node.form &&
+            node.type === "submit"
+          )
+            continue;
           const label = (
-            node.getAttribute('aria-label') ||
-            node.getAttribute('title') ||
+            node.getAttribute("aria-label") ||
+            node.getAttribute("title") ||
             node.textContent ||
-            ''
+            ""
           ).trim();
           if (
             /^(close(?: (?:window|dialog|popup|newsletter))?|dismiss|no thanks|not now|×|✕|✖)$/i.test(
-              label
+              label,
             )
           )
             close = node;
@@ -103,30 +116,32 @@
         (node) =>
           node &&
           (/^(hidden|clip)$/.test(getComputedStyle(node).overflowY) ||
-            getComputedStyle(node).position === 'fixed')
+            getComputedStyle(node).position === "fixed"),
       );
     }
     function count(node) {
       if (!counted.has(node)) {
         counted.add(node);
-        void api.metric('distractions_hidden');
+        void api.metric("distractions_hidden");
       }
     }
     function hide(node) {
       if (hidden.size >= 48) return;
       if (!hidden.has(node))
         hidden.set(node, {
-          value: node.style.getPropertyValue('display'),
-          priority: node.style.getPropertyPriority('display'),
+          value: node.style.getPropertyValue("display"),
+          priority: node.style.getPropertyPriority("display"),
         });
-      node.style.setProperty('display', 'none', 'important');
+      node.style.setProperty("display", "none", "important");
       count(node);
     }
     function process(node) {
       if (!node.isConnected || touched.has(node)) return;
       if (hidden.has(node)) return;
       if (
-        /age[-_ ]?(?:gate|verification|check)|verify[-_ ]?age/i.test(node.id + ' ' + node.className)
+        /age[-_ ]?(?:gate|verification|check)|verify[-_ ]?age/i.test(
+          node.id + " " + node.className,
+        )
       )
         return;
       if (
@@ -145,7 +160,7 @@
         if (
           parent.matches(PROTECTED) &&
           !parent.matches(
-            'main,header,footer,nav,[role="main"],[role="navigation"],[role="banner"],[role="contentinfo"]'
+            'main,header,footer,nav,[role="main"],[role="navigation"],[role="banner"],[role="contentinfo"]',
           )
         )
           return;
@@ -158,24 +173,30 @@
       if (!info) return;
       const style = getComputedStyle(node),
         rect = node.getBoundingClientRect();
-      const floating = ['fixed', 'sticky', 'absolute'].includes(style.position);
+      const floating = ["fixed", "sticky", "absolute"].includes(style.position);
       const modal = node.matches('dialog[open],[aria-modal="true"]');
       if (!floating && !modal) return;
-      const signature = (node.id + ' ' + node.className).toLowerCase();
+      const signature = (node.id + " " + node.className).toLowerCase();
       const newsletter =
         (/newsletter|subscribe-popup|subscription-modal/.test(signature) &&
           /newsletter|subscribe|sign up|join our|inbox/i.test(info.text)) ||
-        (modal && /newsletter|subscribe to (?:our|the)|join our mailing list/i.test(info.text));
+        (modal &&
+          /newsletter|subscribe to (?:our|the)|join our mailing list/i.test(
+            info.text,
+          ));
       const support =
         /chat-nudge|support-popup|support-teaser|intercom-lightweight-app-notifications/.test(
-          signature
-        ) && /need help|can we help|can i help|chat with us|questions/i.test(info.text);
+          signature,
+        ) &&
+        /need help|can we help|can i help|chat with us|questions/i.test(
+          info.text,
+        );
       const ad =
         /sticky-ad|ad-sticky|anchor-ad|ad-banner/.test(signature) &&
         /\badvertisement\b|\bsponsored\b/i.test(
-          info.text + ' ' + (node.getAttribute('aria-label') || '')
+          info.text + " " + (node.getAttribute("aria-label") || ""),
         ) &&
-        ['fixed', 'sticky'].includes(style.position) &&
+        ["fixed", "sticky"].includes(style.position) &&
         rect.height <= innerHeight * 0.3 &&
         rect.width >= innerWidth * 0.35 &&
         (rect.top <= 48 || rect.bottom >= innerHeight - 48);
@@ -205,11 +226,12 @@
       for (const [node, old] of hidden)
         if (!node.isConnected) {
           if (
-            node.style.getPropertyValue('display') === 'none' &&
-            node.style.getPropertyPriority('display') === 'important'
+            node.style.getPropertyValue("display") === "none" &&
+            node.style.getPropertyPriority("display") === "important"
           ) {
-            if (old.value) node.style.setProperty('display', old.value, old.priority);
-            else node.style.removeProperty('display');
+            if (old.value)
+              node.style.setProperty("display", old.value, old.priority);
+            else node.style.removeProperty("display");
           }
           hidden.delete(node);
         }
@@ -236,16 +258,17 @@
       for (const id of timers) clearTimeout(id);
       unsubscribe();
       queue.clear();
-      document.removeEventListener('pointerdown', intent, true);
-      document.removeEventListener('keydown', intent, true);
-      document.removeEventListener('input', intent, true);
+      document.removeEventListener("pointerdown", intent, true);
+      document.removeEventListener("keydown", intent, true);
+      document.removeEventListener("input", intent, true);
       for (const [node, old] of hidden)
         if (
-          node.style.getPropertyValue('display') === 'none' &&
-          node.style.getPropertyPriority('display') === 'important'
+          node.style.getPropertyValue("display") === "none" &&
+          node.style.getPropertyPriority("display") === "important"
         ) {
-          if (old.value) node.style.setProperty('display', old.value, old.priority);
-          else node.style.removeProperty('display');
+          if (old.value)
+            node.style.setProperty("display", old.value, old.priority);
+          else node.style.removeProperty("display");
         }
       hidden.clear();
     };

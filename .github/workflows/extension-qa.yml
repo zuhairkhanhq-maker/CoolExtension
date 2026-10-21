@@ -6,36 +6,6 @@ on:
 permissions:
   contents: read
 jobs:
-  billing-tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: fixture-only
-          POSTGRES_DB: bypass_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      DATABASE_URL: postgresql://postgres:fixture-only@localhost:5432/bypass_test
-      DB_SSL: 'false'
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: npm ci --ignore-scripts
-        working-directory: billing
-      - run: npm audit --omit=dev --audit-level=high
-        working-directory: billing
-      - run: npm test
-        working-directory: billing
   browser-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -43,25 +13,33 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
-      - name: Worker and model checks
+      - name: Distribution and syntax checks
+        if: ${{ !cancelled() }}
+        run: npm run test:package
+      - name: Worker, migration and model checks
         if: ${{ !cancelled() }}
         run: npm run test:unit
-      - name: Free engine browser fixtures
+      - name: Cleanup, YouTube and streaming browser fixtures
         if: ${{ !cancelled() }}
         run: npm run test:free
-      - name: Free popup behavior checks
+      - name: Popup behavior and accessibility
         if: ${{ !cancelled() }}
         run: npm run test:popup
-      - name: Installed MV3 Pro user flow
+      - name: Installed free Autopilot and offline flow
         if: ${{ !cancelled() }}
-        run: npm run test:pro
-      - name: Signed billing extension flow
-        if: ${{ !cancelled() }}
-        run: node Bypass-Extension/tests/billing-flow.cjs
+        run: npm run test:autopilot
+      - name: Package free extension
+        run: npm run build -- --zip
+      - name: Downloadable free extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bypass-Free-v0.9.0
+          path: build/Bypass-Free-v0.9.0.zip
+          if-no-files-found: error
       - name: Retain test evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
@@ -70,6 +48,5 @@ jobs:
           path: |
             Bypass-Extension/tests/*results.json
             Bypass-Extension/tests/*preview.png
-            Bypass-Extension/tests/pro-*.png
           if-no-files-found: warn
           retention-days: 7

@@ -1,18 +1,18 @@
 (() => {
-  'use strict';
+  "use strict";
   const api = globalThis.Bypass;
   if (!api) return;
   const counted = new WeakSet();
   const attempted = new WeakSet();
-  const KNOWN = '#onetrust-banner-sdk,#CybotCookiebotDialog,#didomi-notice';
+  const KNOWN = "#onetrust-banner-sdk,#CybotCookiebotDialog,#didomi-notice";
   const GENERIC =
     '[class~="cookie-banner" i],[id="cookie-banner" i],[class~="cookie-consent-banner" i]';
   const SELECTOR = `${KNOWN},${GENERIC}`;
   const REJECT =
     /^(reject all(?: cookies)?|decline(?: all)?(?: cookies)?|(?:essential|necessary)(?: cookies)? only|only (?:essential|necessary)(?: cookies)?|continue without accepting)$/i;
   const BUTTONS =
-    '#onetrust-reject-all-handler,#CybotCookiebotDialogBodyButtonDecline,#didomi-notice-disagree-button';
-  api.register('cookies', () => {
+    "#onetrust-reject-all-handler,#CybotCookiebotDialogBodyButtonDecline,#didomi-notice-disagree-button";
+  api.register("cookies", () => {
     const hidden = new Map(),
       locks = new Map(),
       queue = new Set();
@@ -20,12 +20,13 @@
     let timer = 0,
       alive = true,
       rootWatch = null;
-    const style = document.createElement('style');
-    style.dataset.bypassOwned = 'consent';
+    const style = document.createElement("style");
+    style.dataset.bypassOwned = "consent";
 
     style.textContent = '[data-bypass-hidden="1"]{display:none!important}';
     function installStyle() {
-      if (document.documentElement && !style.isConnected) document.documentElement.append(style);
+      if (document.documentElement && !style.isConnected)
+        document.documentElement.append(style);
     }
     installStyle();
     if (!style.isConnected) {
@@ -39,24 +40,33 @@
       rootWatch.observe(document, { childList: true });
     }
     function shown(element) {
-      if (!element.isConnected || element.closest('[hidden],[aria-hidden="true"],[inert]'))
+      if (
+        !element.isConnected ||
+        element.closest('[hidden],[aria-hidden="true"],[inert]')
+      )
         return false;
       const s = getComputedStyle(element);
       return (
-        s.display !== 'none' && s.visibility === 'visible' && element.getClientRects().length > 0
+        s.display !== "none" &&
+        s.visibility === "visible" &&
+        element.getClientRects().length > 0
       );
     }
 
     function attributed(container, node) {
       return (
-        container.id === 'onetrust-banner-sdk' && node.classList.contains('ot-overflow-hidden')
+        container.id === "onetrust-banner-sdk" &&
+        node.classList.contains("ot-overflow-hidden")
       );
     }
     function otherDialog(container) {
       const pending = [document];
       let budget = 2000;
       while (pending.length) {
-        const walker = document.createTreeWalker(pending.pop(), NodeFilter.SHOW_ELEMENT);
+        const walker = document.createTreeWalker(
+          pending.pop(),
+          NodeFilter.SHOW_ELEMENT,
+        );
         let element;
         while ((element = walker.nextNode())) {
           if (--budget < 0) return true;
@@ -75,14 +85,15 @@
     function releaseLock(node) {
       const old = locks.get(node);
       if (!old) return;
-      for (const property of ['overflow-y']) {
+      for (const property of ["overflow-y"]) {
         if (
-          node.style.getPropertyValue(property) !== 'auto' ||
-          node.style.getPropertyPriority(property) !== 'important'
+          node.style.getPropertyValue(property) !== "auto" ||
+          node.style.getPropertyPriority(property) !== "important"
         )
           continue;
         const previous = old[property];
-        if (previous.value) node.style.setProperty(property, previous.value, previous.priority);
+        if (previous.value)
+          node.style.setProperty(property, previous.value, previous.priority);
         else node.style.removeProperty(property);
       }
       locks.delete(node);
@@ -97,27 +108,34 @@
           continue;
         }
         const computed = getComputedStyle(node);
-        if (computed.position === 'fixed' || !/^(hidden|clip)$/.test(computed.overflowY)) continue;
+        if (
+          computed.position === "fixed" ||
+          !/^(hidden|clip)$/.test(computed.overflowY)
+        )
+          continue;
         if (!locks.has(node))
           locks.set(
             node,
             Object.fromEntries(
-              ['overflow-y'].map((property) => [
+              ["overflow-y"].map((property) => [
                 property,
                 {
                   value: node.style.getPropertyValue(property),
                   priority: node.style.getPropertyPriority(property),
                 },
-              ])
-            )
+              ]),
+            ),
           );
-        node.style.setProperty('overflow-y', 'auto', 'important');
+        node.style.setProperty("overflow-y", "auto", "important");
       }
     }
     function watchLock(node, container) {
       if (!node || lockObservers.has(node)) return;
       const observer = new MutationObserver(() => unlock(container));
-      observer.observe(node, { attributes: true, attributeFilter: ['style', 'class'] });
+      observer.observe(node, {
+        attributes: true,
+        attributeFilter: ["style", "class"],
+      });
       const expiry = setTimeout(() => {
         observer.disconnect();
         lockObservers.delete(node);
@@ -125,30 +143,38 @@
       lockObservers.set(node, { observer, expiry });
     }
     function rejection(container) {
-      const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT);
+      const walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_ELEMENT,
+      );
       for (let i = 0; i < 160; i++) {
         const button = walker.nextNode();
         if (!button) break;
-        if (!button.matches('button,[role="button"],input[type="button"]')) continue;
+        if (!button.matches('button,[role="button"],input[type="button"]'))
+          continue;
         if (
-          getComputedStyle(button).display === 'none' ||
-          getComputedStyle(button).visibility !== 'visible' ||
+          getComputedStyle(button).display === "none" ||
+          getComputedStyle(button).visibility !== "visible" ||
           button.closest('[aria-hidden="true"]')
         )
           continue;
         if (
-          button.matches(':disabled') ||
-          button.getAttribute('aria-disabled') === 'true' ||
-          button.closest('[inert],[hidden]')
+          button.matches(":disabled") ||
+          button.getAttribute("aria-disabled") === "true" ||
+          button.closest("[inert],[hidden]")
         )
           continue;
         let ancestor = button.parentElement,
           concealed = false;
-        for (; ancestor && ancestor !== container; ancestor = ancestor.parentElement) {
+        for (
+          ;
+          ancestor && ancestor !== container;
+          ancestor = ancestor.parentElement
+        ) {
           const computed = getComputedStyle(ancestor);
           if (
-            computed.display === 'none' ||
-            computed.visibility !== 'visible' ||
+            computed.display === "none" ||
+            computed.visibility !== "visible" ||
             Number(computed.opacity) === 0
           ) {
             concealed = true;
@@ -156,10 +182,19 @@
           }
         }
         if (concealed) continue;
-        const text = (button.getAttribute('aria-label') || button.value || button.textContent || '')
-          .replace(/\s+/g, ' ')
+        const text = (
+          button.getAttribute("aria-label") ||
+          button.value ||
+          button.textContent ||
+          ""
+        )
+          .replace(/\s+/g, " ")
           .trim();
-        if (button.matches(BUTTONS) || (text.length <= 100 && REJECT.test(text))) return button;
+        if (
+          button.matches(BUTTONS) ||
+          (text.length <= 100 && REJECT.test(text))
+        )
+          return button;
       }
       return null;
     }
@@ -177,7 +212,7 @@
       attempted.add(button);
       try {
         button.click();
-        void api.metric('consent_actions');
+        void api.metric("consent_actions");
       } catch {}
     }
     function process(container) {
@@ -186,31 +221,35 @@
       if (!alreadyHidden && !shown(container)) return;
       const button = rejection(container);
 
-      if (!container.matches(KNOWN) && (!button || !cookieContext(container))) return;
+      if (!container.matches(KNOWN) && (!button || !cookieContext(container)))
+        return;
       if (!alreadyHidden) {
         if (hidden.size >= 64) return;
         const lockedNodes = [document.documentElement, document.body].filter(
-          (node) => node && /^(hidden|clip)$/.test(getComputedStyle(node).overflowY)
+          (node) =>
+            node && /^(hidden|clip)$/.test(getComputedStyle(node).overflowY),
         );
         const hadLock = lockedNodes.length > 0;
         if (
           lockedNodes.some(
-            (node) => !attributed(container, node) || getComputedStyle(node).position === 'fixed'
+            (node) =>
+              !attributed(container, node) ||
+              getComputedStyle(node).position === "fixed",
           )
         ) {
           reject(button);
           return;
         }
         hidden.set(container, {
-          display: container.style.getPropertyValue('display'),
-          priority: container.style.getPropertyPriority('display'),
-          marker: container.getAttribute('data-bypass-hidden'),
+          display: container.style.getPropertyValue("display"),
+          priority: container.style.getPropertyPriority("display"),
+          marker: container.getAttribute("data-bypass-hidden"),
         });
-        container.setAttribute('data-bypass-hidden', '1');
-        container.style.setProperty('display', 'none', 'important');
+        container.setAttribute("data-bypass-hidden", "1");
+        container.style.setProperty("display", "none", "important");
         if (!counted.has(container)) {
           counted.add(container);
-          void api.metric('banners_vaporized');
+          void api.metric("banners_vaporized");
         }
         if (hadLock) {
           unlock(container);
@@ -218,22 +257,26 @@
           watchLock(document.body, container);
         }
       }
-      if (alreadyHidden && container.style.getPropertyValue('display') !== 'none') {
-        container.style.setProperty('display', 'none', 'important');
+      if (
+        alreadyHidden &&
+        container.style.getPropertyValue("display") !== "none"
+      ) {
+        container.style.setProperty("display", "none", "important");
       }
       reject(button);
     }
     function restoreContainer(node, old) {
-      if (node.getAttribute('data-bypass-hidden') === '1') {
-        if (old.marker === null) node.removeAttribute('data-bypass-hidden');
-        else node.setAttribute('data-bypass-hidden', old.marker);
+      if (node.getAttribute("data-bypass-hidden") === "1") {
+        if (old.marker === null) node.removeAttribute("data-bypass-hidden");
+        else node.setAttribute("data-bypass-hidden", old.marker);
       }
       if (
-        node.style.getPropertyValue('display') === 'none' &&
-        node.style.getPropertyPriority('display') === 'important'
+        node.style.getPropertyValue("display") === "none" &&
+        node.style.getPropertyPriority("display") === "important"
       ) {
-        if (old.display) node.style.setProperty('display', old.display, old.priority);
-        else node.style.removeProperty('display');
+        if (old.display)
+          node.style.setProperty("display", old.display, old.priority);
+        else node.style.removeProperty("display");
       }
     }
     function prune() {
