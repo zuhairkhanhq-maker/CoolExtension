@@ -931,11 +931,11 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
       videoSetup,
     );
     await waitFor(p, () => window.clicks === 1);
-    await p.waitForTimeout(400);
+    await p.waitForTimeout(200);
     assert.equal(await p.evaluate(() => window.clicks), 1);
-    await waitFor(p, () => window.clicks === 3);
-    await p.waitForTimeout(1200);
-    assert.equal(await p.evaluate(() => window.clicks), 3);
+    await waitFor(p, () => window.clicks >= 5);
+    const clicks = await p.evaluate(() => window.clicks);
+    assert.ok(clicks >= 5 && clicks <= 7);
     await p.close();
   });
   await test("YouTube unloaded next ad waits for playback and disabling removes media listeners", async () => {

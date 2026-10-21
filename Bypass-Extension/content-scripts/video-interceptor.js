@@ -13,7 +13,14 @@
   const SKIP_WORD =
     /^(skip|skip ad|skip ads|skip this ad|omitir|omitir anuncio|saltar anuncio|überspringen|anzeige überspringen|ignorer|passer l’annonce|pular anúncio|salta annuncio|atla|تخطي|跳过|スキップ|건너뛰기)$/iu;
   const RATE = 16;
-  const MEDIA_EVENTS = ["loadstart", "emptied", "loadedmetadata", "playing"];
+  const MEDIA_EVENTS = [
+    "loadstart",
+    "emptied",
+    "loadedmetadata",
+    "playing",
+    "ratechange",
+    "volumechange",
+  ];
   const INPUT_EVENTS = ["pointerdown", "click", "input", "change"];
   api.register("video", () => {
     const players = new Map();
@@ -122,14 +129,32 @@
       for (const event of MEDIA_EVENTS)
         video.removeEventListener(event, listener);
       state.mediaListeners.delete(video);
+      state.preferences.delete(video);
       state.modified.delete(video);
       state.videos.delete(video);
     }
     function trackVideo(video, player, state) {
       if (state.videos.has(video) || state.videos.size >= 16) return;
       state.videos.add(video);
+      state.preferences.set(video, {
+        rate: video.playbackRate,
+        defaultRate: video.defaultPlaybackRate,
+        muted: video.muted,
+      });
       const listener = (event) => {
         if (!alive || owner(video) !== player) return;
+        if (
+          (event.type === "ratechange" || event.type === "volumechange") &&
+          !ad(player) &&
+          !state.modified.has(video)
+        ) {
+          state.preferences.set(video, {
+            rate: video.playbackRate,
+            defaultRate: video.defaultPlaybackRate,
+            muted: video.muted,
+          });
+          return;
+        }
         const snapshot = state.modified.get(video);
         if (event.type !== "playing") {
           if (snapshot) {
@@ -168,10 +193,11 @@
         snapshot.time = video.currentTime;
       }
       if (!snapshot) {
+        const preference = state.preferences.get(video);
         snapshot = {
-          rate: video.playbackRate,
-          defaultRate: video.defaultPlaybackRate,
-          muted: video.muted,
+          rate: preference?.rate ?? video.playbackRate,
+          defaultRate: preference?.defaultRate ?? video.defaultPlaybackRate,
+          muted: preference?.muted ?? video.muted,
           rateOwned: false,
           defaultRateOwned: false,
           muteOwned: false,
@@ -181,7 +207,6 @@
           muteManual: false,
           nextRateAttempt: 0,
           failures: 0,
-          observedRate: video.playbackRate,
           source: video.currentSrc,
           time: video.currentTime,
         };
@@ -210,7 +235,6 @@
         video.addEventListener("volumechange", snapshot.onVolume);
       }
       const now = performance.now();
-      snapshot.observedRate = video.playbackRate;
       if (
         !snapshot.rateManual &&
         (video.playbackRate !== RATE || video.defaultPlaybackRate !== RATE) &&
@@ -223,14 +247,10 @@
             snapshot.defaultRateOwned = video.defaultPlaybackRate === RATE;
           }
           video.playbackRate = RATE;
-          if (
-            video.playbackRate !== RATE ||
-            video.defaultPlaybackRate !== RATE
-          )
+          if (video.playbackRate !== RATE || video.defaultPlaybackRate !== RATE)
             throw Error("Playback rate rejected");
           snapshot.rateOwned = true;
           snapshot.failures = 0;
-          snapshot.observedRate = RATE;
         } catch {
           snapshot.failures = Math.min(snapshot.failures + 1, 6);
           snapshot.nextRateAttempt =
@@ -393,6 +413,7 @@
       const state = {
         videos: new Set(),
         mediaListeners: new Map(),
+        preferences: new WeakMap(),
         buttons: new Set(),
         modified: new Map(),
         active: false,
