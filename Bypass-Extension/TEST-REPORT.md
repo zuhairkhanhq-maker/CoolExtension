@@ -1,4 +1,4 @@
-# Bypass 0.9.2 verification
+# Bypass 0.9.3 verification
 
 GitHub Actions runs the following suites for the current commit. Its downloadable extension artifact is created only when all required suites pass.
 

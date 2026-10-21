@@ -9,7 +9,8 @@
   const PLAYER = ".html5-video-player";
   const SKIP =
     '.ytp-skip-ad-button,.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-ad-skip-button-slot button,.ytp-ad-skip-button-container button,.ytp-skip-ad-button-container button,[id^="skip-button"].ytp-skip-ad-button,[id^="skip-button"] button';
-  const AD_UI = ".video-ads,.ytp-ad-module,.ytp-ad-player-overlay";
+  const POSSIBLE_SKIP =
+    'button,[role="button"],[tabindex="0"],[aria-label],[title],[class*="skip" i],[id*="skip" i]';
   const SKIP_WORD =
     /^(skip|skip ad|skip ads|skip this ad|omitir|omitir anuncio|saltar anuncio|überspringen|anzeige überspringen|ignorer|passer l’annonce|pular anúncio|salta annuncio|atla|تخطي|跳过|スキップ|건너뛰기)$/iu;
   const RATE = 16;
@@ -273,26 +274,52 @@
         if (owner(button) === player && state.buttons.size < 24)
           state.buttons.add(button);
       }
-      for (const button of player.querySelectorAll(
-        `:is(${AD_UI}) :is(button,[role="button"])`,
-      )) {
+      const now = performance.now();
+      if (now < state.nextControlScan) return;
+      state.nextControlScan = now + 200;
+      for (const element of player.querySelectorAll(POSSIBLE_SKIP)) {
         const label = (
-          button.getAttribute("aria-label") ||
-          button.getAttribute("title") ||
-          button.textContent ||
+          element.getAttribute("aria-label") ||
+          element.getAttribute("title") ||
+          element.textContent ||
           ""
         )
           .replace(/\s+/g, " ")
+          .trim()
+          .replace(/[▶▷›»⏭]+$/gu, "")
           .trim();
-        if (SKIP_WORD.test(label) && state.buttons.size < 24)
-          state.buttons.add(button);
+        if (!SKIP_WORD.test(label) || state.buttons.size >= 24) continue;
+        const button = element.matches('button,[role="button"]')
+          ? element
+          : element.closest('button,[role="button"]') || element;
+        if (owner(button) === player) state.buttons.add(button);
       }
     }
-    function activate(button) {
+    function activate(button, player) {
       try {
         button.focus({ preventScroll: true });
       } catch {}
-      const events = ["pointerdown", "mousedown", "pointerup", "mouseup"];
+      const rect = button.getBoundingClientRect();
+      const options = {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        view: window,
+        button: 0,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+        screenX: window.screenX + rect.left + rect.width / 2,
+        screenY: window.screenY + rect.top + rect.height / 2,
+        detail: 1,
+      };
+      const events = [
+        "pointerover",
+        "mouseover",
+        "pointerdown",
+        "mousedown",
+        "pointerup",
+        "mouseup",
+      ];
       for (const type of events) {
         try {
           const EventType = type.startsWith("pointer")
@@ -301,10 +328,7 @@
           if (!EventType) continue;
           button.dispatchEvent(
             new EventType(type, {
-              bubbles: true,
-              cancelable: true,
-              composed: true,
-              button: 0,
+              ...options,
               buttons: type.endsWith("down") ? 1 : 0,
               pointerId: 1,
               pointerType: "mouse",
@@ -313,7 +337,16 @@
           );
         } catch {}
       }
-      button.click();
+      try {
+        button.dispatchEvent(new MouseEvent("click", options));
+      } catch {}
+      setTimeout(() => {
+        if (!alive || !button.isConnected || owner(button) !== player) return;
+        if (!ad(player)) return;
+        try {
+          button.click();
+        } catch {}
+      }, 80);
     }
     function skip(player, state) {
       controls(player, state);
@@ -349,7 +382,7 @@
         if (now < state.nextSkipAttempt) continue;
         state.nextSkipAttempt = now + 400;
         try {
-          activate(button);
+          activate(button, player);
           state.helped = true;
         } catch {}
         break;
@@ -421,6 +454,7 @@
         userRateUntil: -1,
         userMuteUntil: -1,
         nextSkipAttempt: 0,
+        nextControlScan: 0,
         onInput: null,
       };
       state.onInput = (event) => {

@@ -1,6 +1,6 @@
 {
   "name": "bypass-extension-qa",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "private": true,
   "scripts": {
     "test:unit": "node Bypass-Extension/tests/worker.cjs",

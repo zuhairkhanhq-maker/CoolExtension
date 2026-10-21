@@ -938,6 +938,23 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
     assert.ok(clicks >= 5 && clicks <= 7);
     await p.close();
   });
+  await test("YouTube finds an exact Skip control outside legacy ad containers", async () => {
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video><div class="yt-new-control"><button><span>Skip</span><span aria-hidden="true">▶</span></button></div></div>',
+      "www.youtube.com",
+      videoSetup +
+        `document.addEventListener('DOMContentLoaded',()=>{const button=document.querySelector('.yt-new-control button');button.addEventListener('click',event=>{if(event.detail===1&&event.clientX>0){window.coordinateSkip=true;button.closest('.html5-video-player').classList.remove('ad-showing')}});});`,
+    );
+    await waitFor(p, () => window.coordinateSkip === true);
+    await waitFor(
+      p,
+      () =>
+        document.querySelector("video").playbackRate === 1.5 &&
+        !document.querySelector("video").muted,
+    );
+    assert.deepEqual(p.errors, []);
+    await p.close();
+  });
   await test("YouTube unloaded next ad waits for playback and disabling removes media listeners", async () => {
     const p = await fixture(
       '<div class="html5-video-player ad-showing"><video></video></div>',
