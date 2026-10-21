@@ -30,6 +30,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: npm run test:popup
       - name: Installed Free extension and consecutive ad flow
+        timeout-minutes: 3
         if: ${{ !cancelled() }}
         run: npm run test:installed
       - name: Package free extension

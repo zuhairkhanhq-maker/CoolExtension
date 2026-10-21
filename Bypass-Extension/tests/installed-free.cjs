@@ -29,8 +29,11 @@ async function launch() {
       `--disable-extensions-except=${root}`,
       `--load-extension=${root}`,
       "--no-sandbox",
+      "--autoplay-policy=no-user-gesture-required",
     ],
   });
+  browser.setDefaultTimeout(8000);
+  browser.setDefaultNavigationTimeout(15000);
   browser.on("page", (page) =>
     page.on("pageerror", (error) => errors.push(error.message)),
   );
@@ -40,12 +43,16 @@ async function launch() {
   return { browser, worker };
 }
 async function popup(worker, id) {
-  const ready = context.waitForEvent("page");
-  await worker.evaluate(
-    (url) => chrome.tabs.create({ url, active: false }),
-    `chrome-extension://${id}/ui/popup.html`,
+  const [target] = await worker.evaluate(() =>
+    chrome.tabs.query({ url: "https://www.youtube.com/*" }),
   );
-  const page = await ready;
+  assert.ok(target, "The fixture website tab must exist");
+  const page = await context.newPage();
+  // A tab-hosted popup needs the target that the real toolbar popup receives.
+  await page.addInitScript((tab) => {
+    chrome.tabs.query = async () => [tab];
+  }, target);
+  await page.goto(`chrome-extension://${id}/ui/popup.html`);
   await page.waitForFunction(
     () => document.getElementById("state")?.textContent === "On",
   );
@@ -57,9 +64,13 @@ async function popup(worker, id) {
   context = started.browser;
   let worker = started.worker;
   const id = new URL(worker.url()).host;
-  const html = `<!doctype html><html><head><title>YouTube fixture</title><style>body{min-height:1200px}video{width:320px;height:180px}#onetrust-banner-sdk{padding:20px}button{padding:10px}</style></head><body><main><h1>Video page</h1><div class="html5-video-player ad-showing"><video></video><button class="ytp-skip-ad-button" hidden disabled onclick="window.skips=(window.skips||0)+1;this.parentElement.classList.remove('ad-showing')">Skip Ad</button></div><form><input id="email"></form></main><div id="onetrust-banner-sdk"><p>We use cookies</p><button id="onetrust-reject-all-handler" onclick="window.rejects=(window.rejects||0)+1">Reject all</button></div><script>window.prepare=video=>{Object.defineProperties(video,{paused:{get:()=>false},readyState:{get:()=>4}});video.playbackRate=1.5;};prepare(document.querySelector('video'));</script></body></html>`;
+  const media = fs.readFileSync(path.join(__dirname, "fixtures/player.webm"));
+  const html = `<!doctype html><html><head><title>YouTube fixture</title><style>body{min-height:1200px}video{width:320px;height:180px}#onetrust-banner-sdk{padding:20px}button{padding:10px}</style></head><body><main><h1>Video page</h1><div class="html5-video-player ad-showing"><video></video><button class="ytp-skip-ad-button" hidden disabled onclick="window.skips=(window.skips||0)+1;this.parentElement.classList.remove('ad-showing')">Skip Ad</button></div><form><input id="email"></form></main><div id="onetrust-banner-sdk"><p>We use cookies</p><button id="onetrust-reject-all-handler" onclick="window.rejects=(window.rejects||0)+1">Reject all</button></div><script>window.prepare=video=>{video.autoplay=true;video.loop=true;video.playbackRate=1.5;video.src='/player.webm';};prepare(document.querySelector('video'));</script></body></html>`;
   await context.route("https://www.youtube.com/**", (route) =>
     route.fulfill({ contentType: "text/html", body: html }),
+  );
+  await context.route("https://www.youtube.com/player.webm", (route) =>
+    route.fulfill({ contentType: "video/webm", body: media }),
   );
   const page = await context.newPage();
   await page.goto("https://www.youtube.com/watch?v=fixture");
@@ -193,12 +204,14 @@ async function popup(worker, id) {
     );
   });
   await test("Installed streaming intro control remains opt-in and works without Autopilot", async () => {
-    await context.route("https://www.netflix.com/**", (route) =>
-      route.fulfill({
+    await context.route("https://www.netflix.com/**", (route) => {
+      if (route.request().url().endsWith("/player.webm"))
+        return route.fulfill({ contentType: "video/webm", body: media });
+      return route.fulfill({
         contentType: "text/html",
-        body: `<!doctype html><html><head><title>Streaming fixture</title><style>video{width:320px;height:180px}button{padding:10px}</style></head><body><div class="watch-video"><video></video><button data-uia="player-skip-intro" onclick="window.intros=(window.intros||0)+1;this.hidden=true">Skip Intro</button></div><script>const video=document.querySelector('video');Object.defineProperties(video,{paused:{get:()=>false},readyState:{get:()=>4},duration:{get:()=>1200},currentTime:{get:()=>60}});</script></body></html>`,
-      }),
-    );
+        body: `<!doctype html><html><head><title>Streaming fixture</title><style>video{width:320px;height:180px}button{padding:10px}</style></head><body><div class="watch-video"><video autoplay muted loop src="/player.webm"></video><button data-uia="player-skip-intro" onclick="window.intros=(window.intros||0)+1;this.hidden=true">Skip Intro</button></div></body></html>`,
+      });
+    });
     const stream = await context.newPage();
     await stream.goto("https://www.netflix.com/watch/123");
     await stream.waitForTimeout(400);
