@@ -8,9 +8,10 @@
     return;
   const PLAYER = ".html5-video-player";
   const SKIP =
-    ".ytp-skip-ad-button,.ytp-ad-skip-button,.ytp-ad-skip-button-modern";
+    ".ytp-skip-ad-button,.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-ad-skip-button-container button,.ytp-skip-ad-button-container button";
   const RATE = 16;
   const MEDIA_EVENTS = ["loadstart", "emptied", "loadedmetadata", "playing"];
+  const INPUT_EVENTS = ["pointerdown", "click", "keydown", "input", "change"];
   api.register("video", () => {
     const players = new Map();
     let alive = true,
@@ -36,11 +37,20 @@
       video.removeEventListener("ratechange", snapshot.onRate);
       video.removeEventListener("volumechange", snapshot.onVolume);
       try {
-        if (snapshot.rateOwned && video.playbackRate === RATE)
+        if (
+          snapshot.rateOwned &&
+          !snapshot.rateManual &&
+          video.playbackRate !== snapshot.rate
+        )
           video.playbackRate = snapshot.rate;
       } catch {}
       try {
-        if (snapshot.muteOwned && video.muted) video.muted = snapshot.muted;
+        if (
+          snapshot.muteOwned &&
+          !snapshot.muteManual &&
+          video.muted !== snapshot.muted
+        )
+          video.muted = snapshot.muted;
       } catch {}
     }
     function finish(state, count) {
@@ -78,6 +88,8 @@
     function remove(player, state) {
       finish(state, false);
       for (const video of state.videos) forgetVideo(video, state);
+      for (const event of INPUT_EVENTS)
+        player.removeEventListener(event, state.onInput, true);
       state.observer.disconnect();
       players.delete(player);
       report();
@@ -100,15 +112,16 @@
         const snapshot = state.modified.get(video);
         if (event.type !== "playing") {
           if (snapshot) {
-            snapshot.pending = true;
-            snapshot.loading = true;
+            snapshot.nextRateAttempt = 0;
+            snapshot.failures = 0;
+            if (event.type === "loadstart" || event.type === "emptied") {
+              snapshot.rateManual = false;
+              snapshot.muteManual = false;
+            }
           }
           state.clicked = new WeakMap();
           state.started = performance.now();
           state.timedOut = false;
-        } else if (snapshot?.loading) {
-          snapshot.pending = true;
-          snapshot.loading = false;
         }
         check(player, state);
       };
@@ -123,14 +136,16 @@
           video.currentSrc !== snapshot.source ||
           video.currentTime < snapshot.time - 1
         ) {
-          snapshot.pending = true;
+          snapshot.nextRateAttempt = 0;
+          snapshot.failures = 0;
+          snapshot.rateManual = false;
+          snapshot.muteManual = false;
           state.clicked = new WeakMap();
           state.started = performance.now();
         }
         snapshot.source = video.currentSrc;
         snapshot.time = video.currentTime;
       }
-      if (snapshot && !snapshot.pending) return;
       if (!snapshot) {
         snapshot = {
           rate: video.playbackRate,
@@ -139,36 +154,71 @@
           muteOwned: false,
           onRate: null,
           onVolume: null,
-          pending: true,
-          loading: video.readyState < 3,
+          rateManual: false,
+          muteManual: false,
+          nextRateAttempt: 0,
+          failures: 0,
+          observedRate: video.playbackRate,
           source: video.currentSrc,
           time: video.currentTime,
         };
         snapshot.onRate = () => {
-          if (video.playbackRate !== RATE) snapshot.rateOwned = false;
+          if (
+            video.playbackRate !== RATE &&
+            performance.now() <= state.userRateUntil
+          ) {
+            snapshot.rate = video.playbackRate;
+            snapshot.rateManual = true;
+            snapshot.rateOwned = false;
+          }
         };
         snapshot.onVolume = () => {
-          if (!video.muted) snapshot.muteOwned = false;
+          if (performance.now() <= state.userMuteUntil) {
+            snapshot.muted = video.muted;
+            snapshot.muteManual = true;
+            snapshot.muteOwned = false;
+          }
         };
         state.modified.set(video, snapshot);
         video.addEventListener("ratechange", snapshot.onRate);
         video.addEventListener("volumechange", snapshot.onVolume);
       }
-      snapshot.pending = false;
-      try {
-        if (video.playbackRate !== RATE) {
+      const now = performance.now();
+      if (
+        snapshot.observedRate === RATE &&
+        video.playbackRate !== RATE &&
+        !snapshot.rateManual
+      ) {
+        state.clicked = new WeakMap();
+      }
+      snapshot.observedRate = video.playbackRate;
+      if (
+        !snapshot.rateManual &&
+        video.playbackRate !== RATE &&
+        now >= snapshot.nextRateAttempt
+      ) {
+        snapshot.nextRateAttempt = now + 250;
+        try {
           video.playbackRate = RATE;
-          snapshot.rateOwned = video.playbackRate === RATE;
+          if (video.playbackRate !== RATE)
+            throw Error("Playback rate rejected");
+          snapshot.rateOwned = true;
+          snapshot.failures = 0;
+          snapshot.observedRate = RATE;
+        } catch {
+          snapshot.failures = Math.min(snapshot.failures + 1, 6);
+          snapshot.nextRateAttempt =
+            now + Math.min(10000, 250 * 2 ** snapshot.failures);
         }
-        if (video.playbackRate !== RATE) return;
-        if (!video.muted) {
+      }
+      if (video.playbackRate !== RATE) return;
+      try {
+        if (!snapshot.muteManual && !video.muted) {
           video.muted = true;
           snapshot.muteOwned = video.muted;
         }
         state.helped = true;
-      } catch {
-        // Retry only on the next media load, never on every polling tick.
-      }
+      } catch {}
     }
     function skip(player, state) {
       for (const button of state.buttons) {
@@ -191,19 +241,26 @@
           !rect.height ||
           style.visibility !== "visible" ||
           style.display === "none" ||
-          Number(style.opacity) === 0
+          Number(style.opacity) === 0 ||
+          (typeof button.checkVisibility === "function" &&
+            !button.checkVisibility({
+              checkOpacity: true,
+              checkVisibilityCSS: true,
+            }))
         ) {
           state.clicked.delete(button);
           continue;
         }
         const attempt = state.clicked.get(button),
           now = performance.now();
+        if (now < state.nextSkipAttempt) continue;
         if (attempt && (attempt.count >= 3 || now - attempt.at < 1000))
           continue;
         state.clicked.set(button, {
           at: now,
           count: (attempt?.count || 0) + 1,
         });
+        state.nextSkipAttempt = now + 100;
         try {
           button.click();
           state.helped = true;
@@ -274,7 +331,33 @@
         timedOut: false,
         started: 0,
         observer: null,
+        userRateUntil: -1,
+        userMuteUntil: -1,
+        nextSkipAttempt: 0,
+        onInput: null,
       };
+      state.onInput = (event) => {
+        if (!event.isTrusted || !ad(player)) return;
+        const target = event
+          .composedPath()
+          .find((node) => node instanceof Element);
+        const key = event.type === "keydown" ? event.key : "";
+        const until = performance.now() + 1000;
+        if (
+          [">", "<"].includes(key) ||
+          target?.closest('.ytp-settings-menu,[role="menuitemradio"]')
+        )
+          state.userRateUntil = until;
+        if (
+          ["m", "M"].includes(key) ||
+          target?.closest(
+            ".ytp-mute-button,.ytp-volume-panel,.ytp-volume-slider",
+          )
+        )
+          state.userMuteUntil = until;
+      };
+      for (const event of INPUT_EVENTS)
+        player.addEventListener(event, state.onInput, true);
       state.observer = new MutationObserver(() => check(player, state));
       state.observer.observe(player, {
         attributes: true,
@@ -294,7 +377,12 @@
       const state = register(player);
       if (!state) return;
       if (video) trackVideo(element, player, state);
-      if (button && state.buttons.size < 16) state.buttons.add(element);
+      if (button && state.buttons.size < 16) {
+        const control = element.matches('button,[role="button"]')
+          ? element
+          : element.querySelector('button,[role="button"]') || element;
+        if (owner(control) === player) state.buttons.add(control);
+      }
       check(player, state);
     });
     return () => {

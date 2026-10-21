@@ -379,15 +379,13 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
   });
   await test("User speed/mute changes during an ad are respected", async () => {
     const p = await fixture(
-      '<div class="html5-video-player ad-showing"><video></video></div>',
+      '<div class="html5-video-player ad-showing"><video></video><div class="ytp-settings-menu"><button id="user-rate" onclick="document.querySelector(\'video\').playbackRate=2">2x</button></div><button class="ytp-mute-button" onclick="document.querySelector(\'video\').muted=false">Unmute</button></div>',
       "www.youtube.com",
       videoSetup,
     );
     await waitFor(p, () => document.querySelector("video").playbackRate === 16);
-    await p.locator("video").evaluate((v) => {
-      v.playbackRate = 2;
-      v.muted = false;
-    });
+    await p.locator("#user-rate").click();
+    await p.locator(".ytp-mute-button").click();
     await p.waitForTimeout(200);
     assert.equal(await p.locator("video").evaluate((v) => v.playbackRate), 2);
     await p
@@ -598,6 +596,148 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
     await p.close();
   });
 
+  await test("YouTube silent speed resets across consecutive ads recover without any load event", async () => {
+    const base = state.ads_skipped || 0;
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video></div>',
+      "www.youtube.com",
+      videoSetup,
+    );
+    await waitFor(p, () => document.querySelector("video").playbackRate === 16);
+    for (let index = 0; index < 4; index++) {
+      await p.locator("video").evaluate((video) => {
+        video.playbackRate = 1;
+        video.muted = false;
+      });
+      await waitFor(
+        p,
+        () =>
+          document.querySelector("video").playbackRate === 16 &&
+          document.querySelector("video").muted,
+      );
+    }
+    await p
+      .locator(".html5-video-player")
+      .evaluate((player) => player.classList.remove("ad-showing"));
+    await waitFor(
+      p,
+      () =>
+        document.querySelector("video").playbackRate === 1.5 &&
+        !document.querySelector("video").muted,
+    );
+    await p.waitForTimeout(100);
+    assert.equal(state.ads_skipped, base + 1);
+    await p.locator("video").evaluate((video) => {
+      video.playbackRate = 2;
+    });
+    await p.waitForTimeout(350);
+    assert.equal(
+      await p.locator("video").evaluate((video) => video.playbackRate),
+      2,
+    );
+    await p.close();
+  });
+  await test("YouTube silently reset second ad still auto-clicks a newly enabled Skip Ad", async () => {
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video><button class="ytp-skip-ad-button" hidden disabled onclick="window.skips=(window.skips||0)+1;this.parentElement.classList.remove(\'ad-showing\')">Skip ad</button></div>',
+      "www.youtube.com",
+      videoSetup,
+    );
+    await waitFor(p, () => document.querySelector("video").playbackRate === 16);
+    await p.locator("video").evaluate((video) => {
+      video.playbackRate = 1;
+      video.muted = false;
+    });
+    await waitFor(p, () => document.querySelector("video").playbackRate === 16);
+    await p.locator("button").evaluate((button) => {
+      button.hidden = false;
+      button.disabled = false;
+    });
+    await waitFor(p, () => window.skips === 1);
+    await waitFor(
+      p,
+      () =>
+        document.querySelector("video").playbackRate === 1.5 &&
+        !document.querySelector("video").muted,
+    );
+    assert.equal(p.errors.length, 0);
+    await p.close();
+  });
+  await test("YouTube recovers from temporary playback-rate rejection with bounded retries", async () => {
+    const extra =
+      videoSetup +
+      `document.addEventListener('DOMContentLoaded',()=>{const video=document.querySelector('video'),native=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'playbackRate');window.rateAttempts=0;Object.defineProperty(video,'playbackRate',{get:()=>native.get.call(video),set:value=>{if(value===16&&++window.rateAttempts<=2)throw Error('Not ready');native.set.call(video,value);}});});`;
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video></div>',
+      "www.youtube.com",
+      extra,
+    );
+    await p.waitForTimeout(350);
+    assert.equal(await p.evaluate(() => window.rateAttempts), 1);
+    assert.equal(
+      await p.locator("video").evaluate((video) => video.muted),
+      false,
+    );
+    await waitFor(p, () => document.querySelector("video").playbackRate === 16);
+    assert.equal(await p.evaluate(() => window.rateAttempts), 3);
+    await p
+      .locator(".html5-video-player")
+      .evaluate((player) => player.classList.remove("ad-showing"));
+    await waitFor(
+      p,
+      () => document.querySelector("video").playbackRate === 1.5,
+    );
+    assert.equal(p.errors.length, 0);
+    await p.close();
+  });
+  await test("YouTube skips the native button inside a skip container only when its parent is visible", async () => {
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video><div class="ytp-ad-skip-button-container" style="opacity:0"><button onclick="window.skips=(window.skips||0)+1;this.closest(\'.html5-video-player\').classList.remove(\'ad-showing\')">Skip ad</button></div></div>',
+      "www.youtube.com",
+      videoSetup,
+    );
+    await waitFor(p, () => document.querySelector("video").playbackRate === 16);
+    await p.waitForTimeout(250);
+    assert.equal(await p.evaluate(() => window.skips || 0), 0);
+    await p.locator(".ytp-ad-skip-button-container").evaluate((container) => {
+      container.style.opacity = "1";
+    });
+    await waitFor(p, () => window.skips === 1);
+    await waitFor(
+      p,
+      () => document.querySelector("video").playbackRate === 1.5,
+    );
+    await p.close();
+  });
+  await test("YouTube disabling assistance during a silent reset stops all reapplication", async () => {
+    const p = await fixture(
+      '<div class="html5-video-player ad-showing"><video></video></div>',
+      "www.youtube.com",
+      videoSetup,
+    );
+    await waitFor(p, () => document.querySelector("video").playbackRate === 16);
+    await p.locator("video").evaluate((video) => {
+      video.playbackRate = 1;
+    });
+    await setting("www.youtube.com", "video", false);
+    await waitFor(
+      p,
+      () =>
+        document.querySelector("video").playbackRate === 1.5 &&
+        !document.querySelector("video").muted,
+    );
+    await p.locator("video").evaluate((video) => {
+      video.playbackRate = 1;
+      video.dispatchEvent(new Event("playing"));
+    });
+    await p.waitForTimeout(400);
+    assert.equal(
+      await p.locator("video").evaluate((video) => video.playbackRate),
+      1,
+    );
+    await p.close();
+    await setting("www.youtube.com", "video", true);
+  });
   await test("YouTube ad pod reuses media without a class transition or toggle reset", async () => {
     const base = state.ads_skipped || 0;
     const p = await fixture(
@@ -1773,11 +1913,7 @@ const videoSetup = `document.addEventListener('DOMContentLoaded',()=>{for(const 
     ).version;
     assert.equal(manifest.version, packageVersion);
     assert.equal(manifest.content_scripts[0].run_at, "document_start");
-    assert.deepEqual(manifest.content_scripts[0].js, [
-      "core/autopilot-model.js",
-      ...scripts,
-      "content-scripts/autopilot-engine.js",
-    ]);
+    assert.deepEqual(manifest.content_scripts[0].js, scripts);
     for (const file of [
       ...scripts,
       manifest.background.service_worker,

@@ -302,27 +302,6 @@ $("share").addEventListener("click", async () => {
   }
 });
 
-const workspaceTabs = [...document.querySelectorAll(".workspace-tab")];
-
-function showWorkspace(name) {
-  for (const tab of workspaceTabs) {
-    const selected = tab.dataset.panel === name;
-    tab.setAttribute("aria-selected", String(selected));
-    $(`${tab.dataset.panel}-panel`).hidden = !selected;
-  }
-}
-
-for (const tab of workspaceTabs) {
-  tab.addEventListener("click", () => showWorkspace(tab.dataset.panel));
-  tab.addEventListener("keydown", (event) => {
-    if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
-    event.preventDefault();
-    const next = workspaceTabs.find((candidate) => candidate !== tab);
-    next.focus();
-    showWorkspace(next.dataset.panel);
-  });
-}
-
 setInterval(async () => {
   if (!ready || polling || document.hidden) return;
   polling = true;

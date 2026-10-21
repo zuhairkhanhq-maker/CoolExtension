@@ -1,13 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Bypass - Elite Web Optimizer",
-  "version": "0.9.0",
-  "version_name": "0.9.0 Free",
-  "description": "Free local website cleanup, YouTube ad assistance, streaming intro skipping and personal browsing controls. No account. No tracking.",
+  "version": "0.9.1",
+  "version_name": "0.9.1 Free",
+  "description": "Free local website cleanup, YouTube ad assistance and optional streaming intro skipping. Simple site controls. No account. No tracking.",
   "permissions": [
     "storage",
-    "activeTab",
-    "alarms"
+    "activeTab"
   ],
   "host_permissions": [
     "http://*/*",
@@ -37,14 +36,12 @@
         "https://*/*"
       ],
       "js": [
-        "core/autopilot-model.js",
         "core/streaming-sites.js",
         "core/runtime.js",
         "content-scripts/dom-purger.js",
         "content-scripts/distraction-cleaner.js",
         "content-scripts/video-interceptor.js",
-        "content-scripts/streaming-skipper.js",
-        "content-scripts/autopilot-engine.js"
+        "content-scripts/streaming-skipper.js"
       ],
       "run_at": "document_start"
     }

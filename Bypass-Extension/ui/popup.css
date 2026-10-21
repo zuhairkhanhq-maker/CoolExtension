@@ -100,34 +100,6 @@ body {
   font-size: 9px;
 }
 
-.workspace-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 8px 20px 0;
-  border-bottom: 1px solid var(--border);
-}
-.workspace-tab {
-  position: relative;
-  min-height: 42px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  color: var(--muted);
-  background: transparent;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.workspace-tab:hover {
-  color: var(--text);
-}
-.workspace-tab[aria-selected="true"] {
-  color: var(--text);
-  border-bottom-color: var(--accent);
-}
-
 main {
   padding: 16px 20px 18px;
 }
@@ -434,8 +406,7 @@ footer {
   input[role="switch"]::after {
     display: none;
   }
-  .primary-button,
-  .workspace-tab {
+  .primary-button {
     border-color: ButtonText;
   }
 }

@@ -20,7 +20,7 @@ jobs:
       - name: Distribution and syntax checks
         if: ${{ !cancelled() }}
         run: npm run test:package
-      - name: Worker, migration and model checks
+      - name: Worker settings and counter checks
         if: ${{ !cancelled() }}
         run: npm run test:unit
       - name: Cleanup, YouTube and streaming browser fixtures
@@ -29,16 +29,16 @@ jobs:
       - name: Popup behavior and accessibility
         if: ${{ !cancelled() }}
         run: npm run test:popup
-      - name: Installed free Autopilot and offline flow
+      - name: Installed Free extension and consecutive ad flow
         if: ${{ !cancelled() }}
-        run: npm run test:autopilot
+        run: npm run test:installed
       - name: Package free extension
         run: npm run build -- --zip
       - name: Downloadable free extension
         uses: actions/upload-artifact@v4
         with:
-          name: Bypass-Free-v0.9.0
-          path: build/Bypass-Free-v0.9.0.zip
+          name: Bypass-Free-v0.9.1
+          path: build/Bypass-Free-v0.9.1.zip
           if-no-files-found: error
       - name: Retain test evidence
         if: ${{ !cancelled() }}

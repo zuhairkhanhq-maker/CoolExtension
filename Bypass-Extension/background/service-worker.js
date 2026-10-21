@@ -1,9 +1,5 @@
 "use strict";
 
-if (typeof importScripts === "function") {
-  importScripts("../core/autopilot-model.js", "autopilot-worker.js");
-}
-
 let writes = Promise.resolve();
 const counters = new Set([
   "banners_vaporized",

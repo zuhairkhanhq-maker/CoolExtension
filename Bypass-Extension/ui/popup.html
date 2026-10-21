@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Bypass</title>
     <link rel="stylesheet" href="popup.css" />
-    <link rel="stylesheet" href="autopilot.css" />
   </head>
   <body>
     <header class="app-header">
@@ -21,33 +20,8 @@
       <span class="privacy-pill">LOCAL ONLY</span>
     </header>
 
-    <nav class="workspace-tabs" role="tablist" aria-label="Bypass features">
-      <button
-        id="clean-tab"
-        class="workspace-tab"
-        type="button"
-        role="tab"
-        aria-selected="true"
-        aria-controls="clean-panel"
-        data-panel="clean"
-      >
-        Clean
-      </button>
-      <button
-        id="autopilot-tab"
-        class="workspace-tab"
-        type="button"
-        role="tab"
-        aria-selected="false"
-        aria-controls="autopilot-panel"
-        data-panel="autopilot"
-      >
-        Autopilot
-      </button>
-    </nav>
-
     <main>
-      <section id="clean-panel" role="tabpanel" aria-labelledby="clean-tab">
+      <section id="clean-panel">
         <section class="hero compact-hero">
           <p class="eyebrow">WEBSITE CLEANUP</p>
           <h1>Your web, uninterrupted.</h1>
@@ -230,16 +204,6 @@
           Counts show local actions, not guaranteed time saved.
         </p>
       </section>
-
-      <section
-        id="autopilot-panel"
-        role="tabpanel"
-        aria-labelledby="autopilot-tab"
-        tabindex="0"
-        hidden
-      >
-        <p class="sub">Loading your personal controls…</p>
-      </section>
     </main>
 
     <footer>
@@ -247,11 +211,10 @@
         ><span class="secure-dot" aria-hidden="true"></span> No tracking</span
       >
       <span>All features free</span>
-      <span id="footer-version">V0.9.0</span>
+      <span id="footer-version">V0.9.1</span>
     </footer>
 
     <script src="../core/streaming-sites.js"></script>
     <script src="popup.js"></script>
-    <script src="autopilot.js"></script>
   </body>
 </html>

@@ -31,7 +31,11 @@ test("Manifest and popup assets resolve without retired payment files", () => {
     /(?:src|href)="([^"#]+\.(?:js|css|svg))"/g,
   ))
     assert.ok(fs.existsSync(path.resolve(root, "ui", asset)), asset);
-  assert.doesNotMatch(html, /billing|paywall|trial|data-plan|\$\d/i);
+  assert.doesNotMatch(html, /autopilot|billing|paywall|trial|data-plan|\$\d/i);
+  assert.doesNotMatch(
+    JSON.stringify(manifest),
+    /autopilot|pro-worker|pro-engine/,
+  );
   assert.doesNotMatch(
     manifest.permissions.join(" "),
     /identity|cookies|webRequest/,
@@ -50,11 +54,11 @@ test("Distribution contains only local runtime files and preserves binary icons"
   );
   assert.equal(built.status, 0, built.stderr);
   const shipped = files(output);
-  assert.ok(shipped.length > 15);
+  assert.ok(shipped.length > 12);
   for (const file of shipped) {
     assert.doesNotMatch(
       path.relative(output, file),
-      /(?:^|\/)(?:tests|node_modules|billing)(?:\/|$)|\.env|billing|pro-(?:model|worker|engine|ui)/i,
+      /(?:^|\/)(?:tests|node_modules|billing)(?:\/|$)|\.env|autopilot|billing|pro-(?:model|worker|engine|ui)/i,
     );
     if (!/\.(?:js|html)$/.test(file)) continue;
     const code = fs.readFileSync(file, "utf8");

@@ -1,19 +1,12 @@
-# Bypass 0.9.0 test coverage
+# Bypass 0.9.1 verification
 
-The current extension is fully free. Historical trial and billing test suites were retired with the payment implementation; their earlier results do not describe this release.
+GitHub Actions runs the following suites for the current commit. Its downloadable extension artifact is created only when all required suites pass.
 
-## Automated suites
+- Distribution: no Autopilot or payment files, valid local assets, runtime syntax, no network clients and intact icons.
+- Worker: sender authorization, per-site defaults, concurrent settings, batched counters, duplicate retries and failed writes.
+- DOM fixtures: cleanup and scroll restoration, forms/checkout protection, shadow roots, mutation bursts and supported streaming buttons.
+- YouTube regression: silent speed resets with no media event, consecutive ads, delayed Skip Ad availability, reused controls, temporary rate rejection, explicit user changes and restoration.
+- Popup: failed storage, loading races, keyboard controls, accessibility and enlarged text.
+- Installed extension: real popup/assets, site settings, five consecutive silent resets, automatic Skip Ad, popup closure, protection toggles, media replacement, opt-in streaming and persistence across browser restart.
 
-| Suite | Coverage |
-| --- | --- |
-| Package | Runtime-only distribution, local assets, JavaScript syntax, no network clients, binary icon integrity, stale-output rejection |
-| Worker/model | Legacy migration, unrestricted access, sender authorization, concurrent revisions, batched counters, focused usage, schedules, clock boundaries, malformed storage |
-| Browser fixtures | Cookie/distraction cleanup, forms and checkout safety, scroll restoration, consecutive YouTube ads, delayed/reused Skip Ad buttons, playback restoration, supported streaming controls, shadow DOM and mutation bursts |
-| Popup | Loading/storage races, failed saves, keyboard controls, unsupported pages, counter wording, enlarged text and automated accessibility rules |
-| Installed extension | Fresh free access, real settings UI, safe personal hiding and restoration, element picker, schedules and reminders, YouTube presets, busy pages, custom media safety, expired legacy records and offline use |
-
-GitHub Actions runs all suites and uploads the free ZIP only when they pass. Its separate evidence artifact contains detailed results and screenshots. See the repository's latest **Extension QA** run for the tested commit and results.
-
-## Manual acceptance
-
-Follow the checklist in README.md on your own browser and supported live sites before public launch. Automated ad/player fixtures cannot prove compatibility with every account, experiment, language or future website version. Automated accessibility checks are not a complete accessibility certification.
+YouTube and streaming test markup is simulated. Live account/site compatibility still needs the manual checklist in README.md. No former paid feature is included in the current distribution.
